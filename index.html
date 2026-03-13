@@ -36,6 +36,12 @@
   --shadow-panel: 0 8px 48px rgba(0,0,0,0.5);
   --mono: 'Montserrat', sans-serif;
   --sans: 'Montserrat', sans-serif;
+  --light-bg:    #f0f2f5;
+  --light-card:  #ffffff;
+  --light-border: #dde2e8;
+  --light-text:  #1a2e42;
+  --light-dim:   #5a7a96;
+  --light-muted: #8aa5bc;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,6 +53,68 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
+
+/* Light content area below stats bar */
+.main {
+  background: var(--light-bg);
+  min-height: calc(100vh - 140px);
+  padding: 28px 32px 120px;
+}
+
+/* Light mode overrides for main content */
+.main .sec-title { color: var(--light-text); font-size: 15px; font-weight: 800; letter-spacing: 0.02em; }
+.main .sec-hdr { border-bottom-color: var(--light-border); margin-bottom: 16px; }
+
+/* 3D Mission Cards */
+.main .card {
+  background: linear-gradient(145deg, #ffffff 0%, #f5f8fc 100%);
+  border: 1px solid var(--light-border);
+  border-radius: 16px;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.04),
+    0 8px 24px rgba(16,42,67,0.10),
+    0 1px 0 rgba(255,255,255,0.9) inset,
+    inset 0 -2px 4px rgba(16,42,67,0.04);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.main .card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow:
+    0 4px 8px rgba(0,0,0,0.06),
+    0 16px 40px rgba(16,42,67,0.16),
+    0 1px 0 rgba(255,255,255,0.9) inset;
+}
+.main .card-title { color: var(--light-text); font-size: 15px; font-weight: 700; }
+.main .card-meta { color: var(--light-dim); }
+.main .meta-txt { color: var(--light-dim); font-size: 13px; }
+.main .card-fields { color: var(--light-text); }
+.main .card-field-lbl { color: var(--light-muted); font-size: 11px; }
+.main .card-field-val { color: var(--light-text); font-size: 13px; }
+.main .view-link { color: var(--teal); font-size: 13px; font-weight: 700; }
+
+/* Task pool in light mode */
+.main .task-pool {
+  background: var(--light-card);
+  border: 1px solid var(--light-border);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(16,42,67,0.07), 0 1px 0 rgba(255,255,255,0.9) inset;
+  overflow: hidden;
+}
+.main .pool-hdr { background: #e8ecf2; border-bottom: 1px solid var(--light-border); }
+.main .pool-title { color: #c0392b; }
+.main .pool-count { color: var(--light-dim); }
+.main .task-row { border-bottom-color: var(--light-border); }
+.main .task-row:hover { background: rgba(56,190,201,0.06); }
+.main .tn { color: var(--light-text); font-size: 14px; }
+.main .tm { font-size: 13px; }
+.main .ta { color: var(--light-dim); font-size: 13px; }
+.main .ta.urgent { color: #e74c3c; }
+.main .task-row-header { background: #edf0f5; border-bottom-color: var(--light-border); }
+.main .th-col { color: var(--light-muted); }
+
+/* Archive in light mode */
+#archiveSection .task-pool { background: var(--light-card); border: 1px solid var(--light-border); border-radius: 16px; overflow:hidden; }
+#archiveSection .pool-hdr { background: #e8ecf2; }
 
 /* subtle background mesh */
 body::after {
@@ -75,9 +143,11 @@ body::after {
 }
 
 .header-logo img {
-  height: 38px;
+  height: 58px;
   width: auto;
   display: block;
+  mix-blend-mode: multiply;
+  filter: brightness(1.05) contrast(1.05);
 }
 
 .header-center {
@@ -359,24 +429,24 @@ body::after {
   align-items: center;
   justify-content: space-between;
   padding: 10px 16px;
-  background: rgba(0,0,0,0.18);
-  border-top: 1px solid var(--border);
+  background: rgba(16,42,67,0.04);
+  border-top: 1px solid var(--light-border);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .task-counts { display: flex; gap: 14px; }
-.tc { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 500; color: var(--text-dim); }
+.tc { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--light-dim); }
 .tc-num { font-weight: 800; font-size: 13px; }
 .tc-unassigned { color: var(--red); }
 .tc-active { color: var(--teal); }
 
 .view-link {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--teal);
-  background: var(--teal-soft);
-  border: 1px solid rgba(56,190,201,0.2);
-  padding: 4px 12px;
+  background: rgba(56,190,201,0.1);
+  border: 1px solid rgba(56,190,201,0.3);
+  padding: 5px 14px;
   border-radius: 20px;
   transition: all 0.15s;
   letter-spacing: 0.05em;
@@ -414,7 +484,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1fr 180px 120px 110px 130px 110px 80px;
+  grid-template-columns: 1.8fr 220px 110px 110px 120px 110px 80px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -425,7 +495,7 @@ body::after {
 }
 .task-row-header {
   display: grid;
-  grid-template-columns: 1fr 180px 120px 110px 130px 110px 80px;
+  grid-template-columns: 1.8fr 220px 110px 110px 120px 110px 80px;
   gap: 12px;
   padding: 7px 18px;
   font-size: 10px;
@@ -439,8 +509,8 @@ body::after {
 .task-row:last-child { border-bottom: none; }
 .task-row:hover { background: rgba(56,190,201,0.04); }
 
-.tn { font-weight: 600; color: var(--text); }
-.tm { font-size: 11px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn { font-weight: 600; color: var(--text); font-size: 14px; }
+.tm { font-size: 13px; font-weight: 500; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tt-badge {
   font-size: 10px;
   font-weight: 700;
@@ -725,6 +795,85 @@ body::after {
 
 .ts-pill { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
 .task-item { cursor: pointer; }
+/* ── FLOATING TASK WINDOWS ── */
+#taskWindowContainer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+}
+.task-window {
+  position: fixed;
+  width: 480px;
+  max-height: 85vh;
+  background: var(--navy-card);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 64px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  pointer-events: all;
+  transition: box-shadow 0.15s;
+  overflow: hidden;
+}
+.task-window.tw-active { box-shadow: 0 20px 80px rgba(0,0,0,0.7), 0 0 0 1px var(--teal), 0 2px 8px rgba(0,0,0,0.4); }
+.task-window.tw-minimized { max-height: 48px; overflow: hidden; }
+.tw-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--navy-light);
+  border-bottom: 1px solid var(--border);
+  cursor: move;
+  user-select: none;
+  flex-shrink: 0;
+}
+.tw-title { font-size: 12px; font-weight: 700; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
+.tw-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 14px; padding: 2px 5px; border-radius: 4px; line-height: 1; }
+.tw-btn:hover { background: var(--navy-hover); color: var(--text); }
+.tw-body { flex: 1; overflow-y: auto; padding: 0; }
+.tw-body::-webkit-scrollbar { width: 4px; }
+.tw-body::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 2px; }
+
+/* ── TASK WINDOW TASKBAR ── */
+#taskWindowBar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(14,37,56,0.96);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  backdrop-filter: blur(16px);
+  z-index: 600;
+  pointer-events: all;
+}
+.tw-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--navy-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  max-width: 160px;
+  transition: all 0.12s;
+}
+.tw-tab:hover { border-color: var(--teal); color: var(--text); }
+.tw-tab.tw-tab-active { border-color: var(--teal); color: var(--teal); background: var(--teal-soft); }
+.tw-tab-close { color: var(--text-muted); margin-left: 2px; font-size: 10px; }
+.tw-tab-close:hover { color: var(--red); }
+
 .bulk-drop-zone {
   border: 2px dashed var(--border-hi);
   border-radius: var(--radius-md);
@@ -1038,21 +1187,10 @@ body::after {
 
 </div>
 
-<!-- TASK CARD MODAL -->
-<div class="modal-overlay hidden" id="taskCardOverlay" onclick="closeTaskCard(event)">
-  <div class="modal-panel" id="taskCardPanel" onclick="event.stopPropagation()" style="max-width:520px">
-    <div class="mp-stripe" id="tcStripe"></div>
-    <div class="mp-header">
-      <div>
-        <div class="mp-title" id="tcTitle">—</div>
-        <div id="tcBadges" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"></div>
-      </div>
-      <button class="mp-close" onclick="event.stopPropagation();closeTaskCard()">✕</button>
-    </div>
-    <div class="mp-actions" id="tcActions"></div>
-    <div class="mp-body" id="tcBody"></div>
-  </div>
-</div>
+<!-- TASK CARD WINDOWS CONTAINER -->
+<div id="taskWindowContainer"></div>
+<!-- TASK WINDOW TASKBAR -->
+<div id="taskWindowBar" style="display:none"></div>
 
 <!-- DETAIL PANEL -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="closeModalBg(event)">
@@ -1341,7 +1479,7 @@ function cardHtml(m, idx) {
     <div class="card-stripe s-${uc}"></div>
     <div class="card-hdr">
       <div class="card-top">
-        <div class="card-title">${esc(m.Title||'—')}</div>
+        <div class="card-title">${esc((m.Title||'—').replace(/^Urgent:\s*/i,'').replace(/^TT-\d+\s*[—-]?\s*/,'').trim()||'—')}</div>
         <div class="ubadge ub-${uc}">${esc(m.Urgency?m.Urgency.split(' ')[0]:'P?')}</div>
       </div>
       <div class="card-meta">
@@ -1359,10 +1497,13 @@ function cardHtml(m, idx) {
       <div><div class="field-lbl">Ordered By</div><div class="field-val">${esc(m.OrderedBy||'—')}</div></div>
     </div>
     <div class="card-footer">
-      <div class="task-counts">
-        <div class="tc"><span class="tc-num tc-unassigned">${unassigned}</span> unassigned</div>
-        <div class="tc"><span class="tc-num tc-active">${active}</span> active</div>
-        <div class="tc"><span class="tc-num" style="color:var(--text-dim)">${tasks.length}</span> total</div>
+      <div>
+        <div style="font-size:9px;font-weight:700;color:var(--light-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Tasks</div>
+        <div class="task-counts">
+          <div class="tc"><span class="tc-num tc-unassigned">${unassigned}</span> unassigned</div>
+          <div class="tc"><span class="tc-num tc-active">${active}</span> active</div>
+          <div class="tc"><span class="tc-num" style="color:var(--light-dim)">${tasks.length}</span> total</div>
+        </div>
       </div>
       <div class="view-link">View →</div>
     </div>
@@ -1627,958 +1768,583 @@ function openDetail(m) {
   document.getElementById('modalOverlay').classList.remove('hidden');
 }
 
+// ═══════════════════════════════════════════════════════
+// FLOATING TASK WINDOW SYSTEM
+// ═══════════════════════════════════════════════════════
+let openTaskWindows = []; // { id, taskId, el, tabEl }
+let twZBase = 500;
+const TW_MAX = 4;
+let currentTask = null;
+let currentTaskMission = null;
+
 function openTaskCard(t, parentMission) {
-  document.getElementById('tcStripe').className = 'mp-stripe s-p3';
-  document.getElementById('tcTitle').textContent = t.Title || '—';
+  currentTask = t;
+  currentTaskMission = parentMission;
 
-  const assigned = t.AssignedToLookupValue || t.AssignedTo || 'Unassigned';
-  document.getElementById('tcBadges').innerHTML = `
-    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
-    <span class="spill" style="background:rgba(74,158,255,0.1);color:var(--blue);border:1px solid rgba(74,158,255,0.2)">${esc(t.TaskType||'—')}</span>
-    ${t.PauseStatus==='Paused'?'<span class="spill sp-hold">⏸ Paused</span>':''}
-  `;
+  // If already open, bring to front
+  const existing = openTaskWindows.find(w => String(w.taskId) === String(t.id));
+  if(existing) { bringToFront(existing.id); return; }
 
-  // Action buttons
-  document.getElementById('tcActions').innerHTML = `
-    <button class="action-btn primary" onclick="event.stopPropagation();tcSaveStatus()">💾 Save Changes</button>
-    ${parentMission ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${JSON.stringify(parentMission).replace(/"/g,'&quot;')})">↗ View Mission</button>` : ''}
-  `;
-
-  document.getElementById('tcBody').innerHTML = `
-    <div class="mp-section">
-      <div class="mp-sec-label">Task Details</div>
-      <div class="mp-fields">
-        <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
-        <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal)">${esc(t.ParentMissionLookupValue||t.ParentMission||'—')}</div></div>
-        <div><div class="mp-field-lbl">Created</div><div class="mp-field-val mono">${t.DateCreated||t.Created||'—'}</div></div>
-        <div><div class="mp-field-lbl">Completed</div><div class="mp-field-val mono">${t.DateCompleted||'—'}</div></div>
-      </div>
-    </div>
-
-    <div class="mp-section">
-      <div class="mp-sec-label">Status & Assignment</div>
-      <div class="te-row" style="margin-bottom:10px">
-        <label class="te-label">Status</label>
-        <select class="form-select" id="tcStatusSel" onclick="event.stopPropagation()">
-          <option ${t.TaskStatus==='Unassigned'?'selected':''}>Unassigned</option>
-          <option ${t.TaskStatus==='In Progress'?'selected':''}>In Progress</option>
-          <option ${t.TaskStatus==='Paused'?'selected':''}>Paused</option>
-          <option ${t.TaskStatus==='Completed'?'selected':''}>Completed</option>
-        </select>
-      </div>
-      <div class="te-row" style="margin-bottom:10px">
-        <label class="te-label">Pause Reason</label>
-        <select class="form-select" id="tcPauseSel" onclick="event.stopPropagation()">
-          <option value="">—</option>
-          <option ${t.PauseReason==='Awaiting callback'?'selected':''}>Awaiting callback</option>
-          <option ${t.PauseReason==='Awaiting information'?'selected':''}>Awaiting information</option>
-          <option ${t.PauseReason==='Scheduled'?'selected':''}>Scheduled</option>
-          <option ${t.PauseReason==='Responder unavailable'?'selected':''}>Responder unavailable</option>
-          <option ${t.PauseReason==='Lead unresponsive'?'selected':''}>Lead unresponsive</option>
-          <option ${t.PauseReason==='Blocked external'?'selected':''}>Blocked external</option>
-          <option ${t.PauseReason==='Mission on hold'?'selected':''}>Mission on hold</option>
-          <option ${t.PauseReason==='Other'?'selected':''}>Other</option>
-        </select>
-      </div>
-      <div class="te-row">
-        <label class="te-label">Assign To</label>
-        <input class="form-input" id="tcAssignInput" value="${esc(assigned==='Unassigned'?'':assigned)}" placeholder="Name or email..." onclick="event.stopPropagation()" />
-      </div>
-    </div>
-
-    <div class="mp-section">
-      <div class="mp-sec-label">Notes</div>
-      <textarea class="form-input" id="tcNotesInput" rows="4" style="resize:vertical;width:100%" onclick="event.stopPropagation()" placeholder="Add notes...">${esc(t.Notes||'')}</textarea>
-    </div>
-  `;
-
-  renderTaskCard(t, parentMission);
-}
-
-// ═══════════════════════════════════════════════════════
-// WORKFLOW ENGINE — per task type
-// ═══════════════════════════════════════════════════════
-
-// New Lead workflow
-// Action 1: Contact Attempts (repeatable log) — final outcomes: Not Interested / Cannot Contact / Interested→Action 2
-// Action 2: Onboarding — outcomes: Not Interested / Did Not Proceed / Onboarded→Action 3
-// Action 3: Training (optional) — outcomes: Complete / No Training / Rescheduled
-const WF_NEW_LEAD = {
-  actions: [
-    { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
-      isContactLog: true,  // repeatable attempt log before final outcome
-      fields: ['contact_attempts','notes'],
-      // Per-attempt outcomes (logged but don't close task)
-      attemptOutcomes: {
-        Phone:    ['Answered','No answer','Left voicemail','Wrong number'],
-        Email:    ['Reply received','No reply','Bounced'],
-        Text:     ['Reply received','No reply'],
-        'In person': ['Contacted','Not available'],
-      },
-      // Final outcomes that progress or close the task
-      finalOutcomes: [
-        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Cannot Contact', style: 'warning', result: 'close_fail', note: 'Closed — unable to reach' },
-        { label: 'Interested → Proceed to Onboarding', style: 'success', result: 'next', note: 'Contact made — moving to onboarding' },
-      ]
-    },
-    { num: 2, name: 'Onboarding', taskStatus: 'Onboarding',
-      fields: ['meeting_scheduled','notes'],
-      outcomes: [
-        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Did Not Proceed', style: 'danger', result: 'close_fail', note: 'Closed — did not proceed' },
-        { label: 'Onboarded', style: 'success', result: 'next', note: 'Onboarded — moving to training' },
-      ]
-    },
-    { num: 3, name: 'Training', taskStatus: 'Training', optional: true,
-      fields: ['training_date','training_method','modules_completed','notes'],
-      outcomes: [
-        { label: 'Training Complete', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'No Training Needed', style: 'success', result: 'close_success', note: 'Closed — success (no training)' },
-        { label: 'Rescheduled', style: 'warning', result: 'stay', note: 'Training rescheduled — task remains open' },
-      ]
-    }
-  ]
-};
-
-// Approved Contact: Action 1 Make Contact → branches
-const WF_APPROVED_CONTACT = {
-  actions: [
-    { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
-      fields: ['contact_attempts','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'Will Bid Later', style: 'warning', result: 'next_2a', note: 'Will bid later — follow up created' },
-        { label: 'Needs Training', style: 'warning', result: 'next_2b', note: 'Needs training — training action created' },
-      ]
-    },
-    { num: '2A', name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true,
-      fields: ['followup_date','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-      ]
-    },
-    { num: '2B', name: 'Training', taskStatus: 'Training', autocreated: true,
-      fields: ['training_date','training_method','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'Will Bid Later', style: 'warning', result: 'next_3', note: 'Will bid later — final follow up created' },
-      ]
-    },
-    { num: 3, name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true, final: true,
-      fields: ['followup_date','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-      ]
-    }
-  ]
-};
-
-// Generic: free-form actions, manual closure
-const WF_GENERIC = { free: true };
-
-// ═══════════════════════════════
-// GROUP MEMBERS
-// ═══════════════════════════════
-async function loadGroupMembers() {
-  // Strategy 1: Graph User.ReadBasic.All (needs that permission granted in Azure)
-  try {
-    const r = await gGet(`/users?$select=displayName,mail,userPrincipalName,id&$top=50&$filter=accountEnabled eq true`);
-    if(r.value && r.value.length) {
-      groupMembers = r.value
-        .filter(u => u.mail && !u.mail.includes('#EXT#'))
-        .map(m => ({ name: m.displayName, email: m.mail||m.userPrincipalName, id: m.id }));
-      if(groupMembers.length) return;
-    }
-  } catch(e) { /* Permission not yet granted — fall through */ }
-
-  // Strategy 2: SharePoint ERT Members list (manual, always works)
-  try {
-    const items = await getListItems('ERT Members');
-    if(items && items.length) {
-      groupMembers = items.map(i => ({
-        name: i.fields?.Title || i.fields?.MemberName || '',
-        email: i.fields?.Email || i.fields?.MemberEmail || '',
-        id: i.id
-      })).filter(m => m.name && m.email);
-      if(groupMembers.length) return;
-    }
-  } catch(e) { /* List doesn't exist yet */ }
-
-  // Strategy 3: /me/colleagues via OrgChart (People.Read scope)
-  try {
-    const r = await gGet(`/me/people?$top=50&$filter=personType/class eq 'Person' and personType/subclass eq 'OrganizationUser'`);
-    if(r.value && r.value.length) {
-      groupMembers = r.value
-        .filter(p => p.scoredEmailAddresses && p.scoredEmailAddresses[0])
-        .map(p => ({ name: p.displayName, email: p.scoredEmailAddresses[0].address, id: p.id }));
-    }
-  } catch(e) { console.warn('Could not load members via people API', e); }
-}
-
-function memberSelectHtml(selectedEmail) {
-  if(!groupMembers.length) {
-    return `<input class="form-input" id="tcAssignInput" value="${esc(selectedEmail||'')}" placeholder="Enter email..." onclick="event.stopPropagation()" />`;
+  // Max windows check
+  if(openTaskWindows.length >= TW_MAX) {
+    showToast(`Max ${TW_MAX} task cards open at once — close one first`, 'error');
+    return;
   }
-  return `<select class="form-select" id="tcAssignInput" onclick="event.stopPropagation()">
-    <option value="">— Unassigned —</option>
-    ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(m.email===selectedEmail||m.name===selectedEmail)?'selected':''}>${esc(m.name)}</option>`).join('')}
-  </select>`;
+
+  const winId = 'tw_' + Date.now();
+  const el = document.createElement('div');
+  el.className = 'task-window';
+  el.id = winId;
+
+  // Fan position: offset each window
+  const idx = openTaskWindows.length;
+  const centerX = window.innerWidth / 2 - 240;
+  const centerY = window.innerHeight / 2 - 300;
+  const fanX = centerX + idx * 28;
+  const fanY = centerY + idx * 24;
+  el.style.cssText = `left:${fanX}px;top:${fanY}px;z-index:${twZBase + idx + 1}`;
+
+  // Build window HTML
+  el.innerHTML = buildTaskWindowHTML(t, parentMission, winId);
+  document.getElementById('taskWindowContainer').appendChild(el);
+
+  // Make draggable
+  makeDraggable(el, el.querySelector('.tw-titlebar'));
+
+  // Add to taskbar
+  addTaskbarTab(t, winId);
+
+  openTaskWindows.push({ id: winId, taskId: t.id, el, task: t, parentMission });
+  bringToFront(winId);
+  updateTaskbar();
+
+  // Wire internal render
+  renderTaskCardIntoWindow(t, parentMission, winId);
 }
 
-function getWorkflow(taskType) {
-  if(taskType === 'New Lead') return WF_NEW_LEAD;
-  if(taskType === 'Approved Contact') return WF_APPROVED_CONTACT;
-  return WF_GENERIC;
+function buildTaskWindowHTML(t, parentMission, winId) {
+  const uc = t.TaskType==='Approved Contact'?'p1':t.TaskType==='New Lead'?'p2':'p3';
+  const mName = t.ParentMissionLookupValue || (parentMission ? parentMission.Title : '') || t.ParentMission || '—';
+  return `
+    <div class="tw-titlebar" id="${winId}_bar">
+      <div class="mp-stripe s-${uc}" style="width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
+      <div class="tw-title">${esc(t.Title||'—')}</div>
+      <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
+      <button class="tw-btn" onclick="minimizeTaskWindow('${winId}')" title="Minimize">—</button>
+      <button class="tw-btn" onclick="closeTaskWindow('${winId}')" title="Close">✕</button>
+    </div>
+    <div class="tw-body" id="${winId}_body">
+      <div style="padding:24px;text-align:center"><div class="spinner"></div></div>
+    </div>`;
 }
 
-function getCurrentAction(t, taskActions) {
-  // Find the highest-numbered incomplete action
-  if(!taskActions.length) return null;
-  const active = taskActions.filter(a => a.ActionStatus !== 'Completed');
-  if(active.length) return active[0];
-  return taskActions[taskActions.length - 1];
+function bringToFront(winId) {
+  twZBase++;
+  const win = openTaskWindows.find(w => w.id === winId);
+  if(!win) return;
+  win.el.style.zIndex = twZBase + 10;
+  win.el.classList.add('tw-active');
+  openTaskWindows.forEach(w => { if(w.id !== winId) w.el.classList.remove('tw-active'); });
+  // Update taskbar active state
+  document.querySelectorAll('.tw-tab').forEach(tab => {
+    tab.classList.toggle('tw-tab-active', tab.dataset.winId === winId);
+  });
 }
 
-function actionFieldsHtml(fields, a) {
-  if(!fields || !fields.length) return '';
-  return fields.map(f => {
-    if(f === 'contact_attempts') return `
-      <div class="form-row"><label class="form-label">Contact Method</label>
-        <select class="form-input" id="af_method" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateAttemptOutcomes(this.value)">
-          <option>Phone</option><option>Email</option><option>Text</option><option>In person</option>
-        </select>
-      </div>
-      <div class="form-row"><label class="form-label">Attempt Outcome</label>
-        <select class="form-input" id="af_attempt_outcome" onclick="event.stopPropagation()">
-          <option>Answered</option><option>No answer</option><option>Left voicemail</option><option>Wrong number</option>
-        </select>
-      </div>
-      <div class="form-row"><label class="form-label">Date / Time</label>
-        <input class="form-input" type="datetime-local" id="af_datetime" onclick="event.stopPropagation()" />
-      </div>`;
-    if(f === 'meeting_scheduled') return `
-      <div class="form-row"><label class="form-label">Meeting Date / Time</label>
-        <input class="form-input" type="datetime-local" id="af_meeting" onclick="event.stopPropagation()" />
-      </div>`;
-    if(f === 'followup_date') return `
-      <div class="form-row"><label class="form-label">Follow-up Date</label>
-        <input class="form-input" type="datetime-local" id="af_followup" onclick="event.stopPropagation()" />
-      </div>`;
-    if(f === 'training_date') return `
-      <div class="form-row"><label class="form-label">Training Date / Time</label>
-        <input class="form-input" type="datetime-local" id="af_training_date" onclick="event.stopPropagation()" />
-      </div>`;
-    if(f === 'training_method') return `
-      <div class="form-row"><label class="form-label">Training Method</label>
-        <select class="form-input" id="af_training_method" onclick="event.stopPropagation()">
-          <option>In person</option><option>Virtual</option><option>Self-serve</option>
-        </select>
-      </div>`;
-    if(f === 'modules_completed') return `
-      <div class="form-row"><label class="form-label">Modules Completed</label>
-        <input class="form-input" id="af_modules" placeholder="e.g. Onboarding, Compliance" onclick="event.stopPropagation()" />
-      </div>`;
-    if(f === 'notes') return `
-      <div class="form-row"><label class="form-label">Notes <span style="color:var(--red)">*</span></label>
-        <textarea class="form-input" id="af_notes" rows="2" style="resize:vertical" placeholder="Required — outcome, context, or next steps..." onclick="event.stopPropagation()"></textarea>
-      </div>`;
-    return '';
-  }).join('');
+function minimizeTaskWindow(winId) {
+  const win = openTaskWindows.find(w => w.id === winId);
+  if(!win) return;
+  win.el.classList.toggle('tw-minimized');
 }
 
-function outcomeButtonsHtml(outcomes) {
-  return outcomes.map(o => {
-    const cls = o.style === 'danger' ? 'action-btn danger' : o.style === 'success' ? 'action-btn success-btn' : 'action-btn warning';
-    return `<button class="${cls}" onclick="event.stopPropagation();recordOutcome('${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
-  }).join('');
+function closeTaskWindow(winId) {
+  const win = openTaskWindows.find(w => w.id === winId);
+  if(!win) return;
+  win.el.remove();
+  if(win.tabEl) win.tabEl.remove();
+  openTaskWindows = openTaskWindows.filter(w => w.id !== winId);
+  updateTaskbar();
 }
 
-function renderTaskCard(t, parentMission) {
+function addTaskbarTab(t, winId) {
+  const bar = document.getElementById('taskWindowBar');
+  const tab = document.createElement('div');
+  tab.className = 'tw-tab';
+  tab.dataset.winId = winId;
+  tab.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${esc(t.Title||'Task')}</span><span class="tw-tab-close" onclick="event.stopPropagation();closeTaskWindow('${winId}')">✕</span>`;
+  tab.onclick = () => {
+    const win = openTaskWindows.find(w => w.id === winId);
+    if(win) {
+      win.el.classList.remove('tw-minimized');
+      bringToFront(winId);
+    }
+  };
+  const entry = openTaskWindows.find(w => w.id === winId);
+  if(entry) entry.tabEl = tab;
+  bar.appendChild(tab);
+}
+
+function updateTaskbar() {
+  const bar = document.getElementById('taskWindowBar');
+  bar.style.display = openTaskWindows.length ? 'flex' : 'none';
+}
+
+function makeDraggable(el, handle) {
+  let startX, startY, startLeft, startTop;
+  handle.addEventListener('mousedown', e => {
+    if(e.target.classList.contains('tw-btn')) return;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = parseInt(el.style.left)||0;
+    startTop = parseInt(el.style.top)||0;
+    bringToFront(el.id);
+    const onMove = ev => {
+      el.style.left = (startLeft + ev.clientX - startX) + 'px';
+      el.style.top  = Math.max(0, startTop + ev.clientY - startY) + 'px';
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  });
+}
+
+// ── Re-open task card after data refresh ──
+function refreshOpenTaskWindows() {
+  openTaskWindows.forEach(w => {
+    const updated = allTasks.find(t => String(t.id) === String(w.taskId));
+    if(updated) {
+      w.task = updated;
+      renderTaskCardIntoWindow(updated, w.parentMission, w.id);
+    }
+  });
+}
+
+function renderTaskCardIntoWindow(t, parentMission, winId) {
+  currentTask = t;
+  currentTaskMission = parentMission;
+  const body = document.getElementById(winId + '_body');
+  if(!body) return;
+
   const taskActions = allActions.filter(a => String(a.ParentTaskLookupId) === String(t.id) || String(a.ParentTask) === String(t.id));
-  const assigned = t.AssignedToLookupValue || t.AssignedTo || '';
   const wf = getWorkflow(t.TaskType);
-  const _pm = allMissions.find(m => String(m.id) === String(t.ParentMissionLookupId));
-  const mName = t.ParentMissionLookupValue || (_pm ? _pm.Title : '') || t.ParentMission || '—';
+  const mName = t.ParentMissionLookupValue || (parentMission ? parentMission.Title : '') || t.ParentMission || '—';
+  const assigned = t.AssignedToLookupValue || t.AssignedTo || '';
   const isBulk = t.TaskType === 'Bulk Leads';
   const isGeneric = t.TaskType === 'Generic';
   const isTyped = !isGeneric && !isBulk;
 
-  // Header
-  document.getElementById('tcStripe').className = `mp-stripe s-${t.TaskType==='Approved Contact'?'p1':t.TaskType==='New Lead'?'p2':'p3'}`;
-  document.getElementById('tcTitle').textContent = t.Title || '—';
-  document.getElementById('tcBadges').innerHTML = `
-    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'Unassigned')}</span>
-    <span class="spill" style="background:rgba(74,158,255,0.1);color:var(--blue);border:1px solid rgba(74,158,255,0.2)">${esc(t.TaskType||'—')}</span>
-    ${t.PauseStatus==='Paused'?'<span class="spill sp-hold">⏸ Paused</span>':''}
-    <span style="font-size:10px;color:var(--text-muted);padding:2px 6px">Mission: <strong style="color:var(--teal)">${esc(mName)}</strong></span>
-  `;
+  // Update titlebar badge
+  const titleEl = document.getElementById(winId + '_bar');
+  if(titleEl) {
+    const pill = titleEl.querySelector('.tw-badge');
+    if(pill) { pill.className = `tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}`; pill.textContent = t.TaskStatus||'—'; }
+  }
 
-  // Top buttons
+  // Build body content — same content as before but scoped to this window
   const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
-  document.getElementById('tcActions').innerHTML = `
-    ${t.PauseStatus==='Paused'
-      ? `<button class="action-btn primary" onclick="event.stopPropagation();tcResume()">▶ Resume Task</button>`
-      : `<button class="action-btn warning" onclick="event.stopPropagation();tcPause()">⏸ Pause Task</button>`
-    }
-    ${mJson ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${mJson})">↗ Mission</button>` : ''}
-  `;
 
-  // ── ASSIGN TO section (always shown) ──
   const assignSection = `
     <div class="mp-section">
-      <div class="mp-sec-label">Assignment</div>
+      <div class="mp-sec-label">Details</div>
+      <div class="mp-fields">
+        <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal);font-weight:600">${esc(mName)}</div></div>
+        <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
+      </div>
+      <div class="mp-sec-label" style="margin-top:12px">Assignment</div>
       <div class="te-row">
-        <label class="te-label">Assigned To</label>
-        <select class="form-select" id="tcAssignSel" onclick="event.stopPropagation()" onchange="event.stopPropagation();tcAssignChange(this.value)">
+        <label class="te-label">Assign To</label>
+        <select class="form-select" id="${winId}_assign" onclick="event.stopPropagation()" onchange="event.stopPropagation();tcAssignChange('${winId}',this.value,${t.id})">
           <option value="">— Unassigned —</option>
           ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(m.email===assigned||m.name===assigned)?'selected':''}>${esc(m.name)}</option>`).join('')}
         </select>
       </div>
+      ${!groupMembers.length ? `<div style="font-size:10px;color:var(--amber);margin-top:6px">⚠ No members loaded — see setup instructions</div>` : ''}
     </div>`;
 
-  // ── BULK LEADS section ──
-  const bulkSection = isBulk ? `
-    <div class="mp-section">
-      <div class="mp-sec-label">Bulk Lead Upload</div>
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
-        Upload a .csv file — Required columns: <strong>Lead name, Business type, Contact name, Phone, Email</strong>. Optional: Notes.
-      </div>
-      <div class="bulk-drop-zone" onclick="event.stopPropagation();document.getElementById('bulkFileInput').click()">
-        <div style="font-size:24px;margin-bottom:6px">📂</div>
-        <div style="font-size:12px;font-weight:600;color:var(--teal)">Click to upload .csv spreadsheet</div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each valid row creates one New Lead task</div>
-      </div>
-      <input type="file" id="bulkFileInput" accept=".xlsx,.csv" style="display:none" onchange="event.stopPropagation();handleBulkFile(event)" />
-      <div id="bulkPreview" style="margin-top:10px"></div>
-      <button class="action-btn primary" id="bulkCreateBtn" style="display:none;margin-top:8px;width:100%" onclick="event.stopPropagation();createBulkLeads()">✓ Load Valid Tasks</button>
-    </div>` : '';
+  const pauseResumeBtn = t.PauseStatus==='Paused'
+    ? `<button class="action-btn primary" onclick="event.stopPropagation();tcResume('${winId}',${t.id})">▶ Resume Task</button>`
+    : `<button class="action-btn warning" onclick="event.stopPropagation();tcPauseWin('${winId}',${t.id})">⏸ Pause Task</button>`;
 
-  // ── TYPED WORKFLOW actions ──
-  let actionsSection = '';
+  const missionBtn = mJson ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskWindow('${winId}');openDetail(${mJson})">↗ View Mission</button>` : '';
+
+  const topBtns = `<div class="mp-actions" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">${pauseResumeBtn}${missionBtn}</div>`;
+
+  // Build workflow section
+  let workflowSection = '';
   if(isTyped && wf.actions) {
-    const actionItems = taskActions.map((a, ai) => {
+    const isContactLog = wf.actions[0] && wf.actions[0].isContactLog;
+    const progressedPast1 = taskActions.some(a => a.Title && a.Title.includes('Action 1 —'));
+    const nextActionNum = isContactLog && !progressedPast1 ? 1 : taskActions.filter(a=>a.ActionStatus==='Completed'&&!a.Title.includes('Attempt')).length + 1;
+    const wfAction = wf.actions.find(wa => wa.num === nextActionNum || String(wa.num) === String(nextActionNum));
+
+    const actionItems = taskActions.map((a,ai) => {
       const statusCls = (a.ActionStatus||'').toLowerCase().replace(/\s/g,'');
-      return `<div class="task-item" style="cursor:pointer" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')">
+      return `<div class="task-item">
         <div class="ti-left">
           <div class="ti-name">${esc(a.Title||'—')}</div>
-          <div class="ti-meta">${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')} ${a.Notes?'· '+esc(a.Notes.substring(0,40)):''}</div>
+          <div class="ti-meta">${esc(a.ActionType||'')}${a.Notes?' · '+esc(a.Notes.substring(0,40)):''}</div>
         </div>
         <span class="ts-pill ts-${statusCls}">${esc(a.ActionStatus||'—')}</span>
-      </div>
-      <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
-        <div class="te-row"><label class="te-label">Assigned</label>${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}</div>
-        <div class="te-row"><label class="te-label">Notes</label><input class="form-input" value="${esc(a.Notes||'')}" placeholder="Notes..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" /></div>
       </div>`;
     }).join('');
 
-    // Find current action template — for contact log, action 1 stays active until final outcome
-    const isContactLog = wf.actions && wf.actions[0] && wf.actions[0].isContactLog;
-    const completedNonContact = taskActions.filter(a => a.ActionStatus === 'Completed' && !a.Title.includes('Attempt'));
-    const progressedPast1 = completedNonContact.some(a => a.Title.includes('Action 1'));
-    const nextActionNum = isContactLog && !progressedPast1 ? 1 : taskActions.filter(a=>a.ActionStatus==='Completed').length + 1;
-    const wfAction = wf.actions ? wf.actions.find(wa => wa.num === nextActionNum || String(wa.num) === String(nextActionNum)) : null;
+    if(actionItems) {
+      workflowSection += `<div class="mp-section"><div class="mp-sec-label">Action History (${taskActions.length})</div>${actionItems}</div>`;
+    }
 
-    // Build current action panel
-    let currentActionHtml = '';
-    if(t.TaskStatus !== 'Completed' && wfAction) {
+    if(wfAction && t.TaskStatus !== 'Completed') {
       if(wfAction.isContactLog) {
-        // Contact attempt log UI: log attempts + final outcome separately
         const attempts = taskActions.filter(a => a.Title && a.Title.includes('Attempt'));
-        currentActionHtml = `
+        workflowSection += `
         <div class="mp-section" style="border:1px solid var(--border-hi);border-radius:var(--radius-md);padding:0;overflow:hidden">
           <div style="background:var(--teal-soft);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-            <div>
-              <div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">Action 1</div>
-              <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">Make Contact</div>
-            </div>
+            <div><div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">Action 1</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">Make Contact</div></div>
             <div style="font-size:11px;color:var(--text-dim)">${attempts.length} attempt${attempts.length!==1?'s':''} logged</div>
           </div>
           <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
             <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Log Contact Attempt</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-              <div>
-                <label class="form-label">Method</label>
-                <select class="form-input" id="af_method" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateAttemptOutcomes(this.value)">
+              <div><label class="form-label">Method</label>
+                <select class="form-input" id="${winId}_method" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateAttemptOutcomesWin('${winId}',this.value)">
                   <option>Phone</option><option>Email</option><option>Text</option><option>In person</option>
                 </select>
               </div>
-              <div>
-                <label class="form-label">Result</label>
-                <select class="form-input" id="af_attempt_outcome" onclick="event.stopPropagation()">
-                  <option>Answered</option><option>No answer</option><option>Left voicemail</option><option>Wrong number</option>
+              <div><label class="form-label">Result</label>
+                <select class="form-input" id="${winId}_attempt_outcome" onclick="event.stopPropagation()">
+                  <option>Answered</option><option>No answer</option><option>Left voicemail</option><option>Wrong number</option><option>Line disconnected</option>
                 </select>
               </div>
             </div>
-            <div style="margin-bottom:8px">
-              <label class="form-label">Date / Time</label>
-              <input class="form-input" type="datetime-local" id="af_datetime" onclick="event.stopPropagation()" />
+            <div style="margin-bottom:8px"><label class="form-label">Date / Time</label>
+              <input class="form-input" type="datetime-local" id="${winId}_datetime" onclick="event.stopPropagation()" />
             </div>
-            <div style="margin-bottom:10px">
-              <label class="form-label">Notes</label>
-              <textarea class="form-input" id="af_notes" rows="2" style="resize:vertical" placeholder="Context, message left, callback time, etc..." onclick="event.stopPropagation()"></textarea>
+            <div style="margin-bottom:10px"><label class="form-label">Notes</label>
+              <textarea class="form-input" id="${winId}_attempt_notes" rows="2" style="resize:vertical" placeholder="Context, message left, callback time..." onclick="event.stopPropagation()"></textarea>
             </div>
-            <button class="action-btn primary" onclick="event.stopPropagation();logContactAttempt()" style="width:100%">+ Log This Attempt</button>
+            <button class="action-btn primary" onclick="event.stopPropagation();logContactAttemptWin('${winId}',${t.id})" style="width:100%">+ Log This Attempt</button>
           </div>
-          ${attempts.length ? `
-          <div style="padding:8px 14px;border-bottom:1px solid var(--border);background:var(--navy)">
+          ${attempts.length ? `<div style="padding:8px 14px;border-bottom:1px solid var(--border);background:var(--navy)">
             <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Attempt History</div>
-            ${attempts.map(a=>`
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px">
-                <div>
-                  <span style="font-weight:600;color:var(--text)">${esc(a.ActionType||'')}</span>
-                  <span style="color:var(--text-dim);margin-left:6px">→ ${esc(a.Notes ? a.Notes.split('|')[0] : '—')}</span>
-                </div>
-                <span style="color:var(--text-muted);font-size:10px">${a.DateCreated ? new Date(a.DateCreated).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''}</span>
-              </div>`).join('')}
+            ${attempts.map(a=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+              <span style="font-weight:600;color:var(--text)">${esc(a.ActionType||'')} → <span style="color:var(--text-dim)">${esc(a.Notes?a.Notes.split('|')[0]:'—')}</span></span>
+              <span style="color:var(--text-muted);font-size:10px">${a.DateCreated?new Date(a.DateCreated).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span>
+            </div>`).join('')}
           </div>` : ''}
           <div style="padding:12px 14px">
-            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Final Outcome — closes or progresses task</div>
-            <div style="margin-bottom:10px">
-              <label class="form-label">Notation <span style="color:var(--red)">*</span></label>
-              <textarea class="form-input" id="af_final_notes" rows="2" style="resize:vertical" placeholder="Summary of contact outcome — required..." onclick="event.stopPropagation()"></textarea>
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Final Outcome</div>
+            <div style="margin-bottom:10px"><label class="form-label">Notation <span style="color:var(--red)">*</span></label>
+              <textarea class="form-input" id="${winId}_final_notes" rows="2" style="resize:vertical" placeholder="Summary — required..." onclick="event.stopPropagation()"></textarea>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${wfAction.finalOutcomes.map(o => {
-                const cls = o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':'action-btn warning';
-                return `<button class="${cls}" onclick="event.stopPropagation();recordFinalOutcome('${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
+              ${wfAction.finalOutcomes.map(o=>{
+                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':'action-btn warning';
+                return `<button class="${cls}" onclick="event.stopPropagation();recordFinalOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
               }).join('')}
             </div>
           </div>
         </div>`;
       } else {
-        // Standard action UI
-        currentActionHtml = `
+        workflowSection += `
         <div class="mp-section" style="border:1px solid var(--border-hi);border-radius:var(--radius-md);padding:0;overflow:hidden">
           <div style="background:var(--teal-soft);padding:10px 14px;border-bottom:1px solid var(--border)">
-            <div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">
-              Action ${wfAction.num}${wfAction.optional?' · Optional':''}
-            </div>
+            <div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase">Action ${wfAction.num}${wfAction.optional?' · Optional':''}</div>
             <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${esc(wfAction.name)}</div>
           </div>
           <div style="padding:12px 14px">
             ${actionFieldsHtml(wfAction.fields, null)}
-            <div class="form-row">
-              <label class="form-label">Notation <span style="color:var(--red)">*</span></label>
-              <textarea class="form-input" id="af_notes" rows="2" style="resize:vertical" placeholder="Outcome, context, or next steps — required..." onclick="event.stopPropagation()"></textarea>
+            <div class="form-row"><label class="form-label">Notation <span style="color:var(--red)">*</span></label>
+              <textarea class="form-input" id="${winId}_action_notes" rows="2" style="resize:vertical" placeholder="Required..." onclick="event.stopPropagation()"></textarea>
             </div>
-            <div style="margin-top:12px">
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Record Outcome</div>
-              <div style="display:flex;flex-wrap:wrap;gap:6px">
-                ${outcomeButtonsHtml(wfAction.outcomes)}
-              </div>
+            <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
+              ${wfAction.outcomes.map(o=>{
+                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':'action-btn warning';
+                return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
+              }).join('')}
             </div>
           </div>
         </div>`;
       }
-    } else if(t.TaskStatus !== 'Completed') {
-      currentActionHtml = `<div class="mp-section" style="text-align:center;padding:16px;color:var(--text-muted);font-size:11px">All workflow actions complete — task pending closure.</div>`;
     }
-
-    actionsSection = `
-      <div class="mp-section">
-        <div class="mp-sec-label">Action History (${taskActions.length})</div>
-        ${taskActions.length ? `<div id="actionList">${actionItems}</div>` : '<div style="padding:8px 0;font-size:11px;color:var(--text-muted)">No actions recorded yet.</div>'}
-      </div>
-      ${currentActionHtml}`;
   }
 
-  // ── GENERIC free-form actions ──
+  // Generic section
   let genericSection = '';
   if(isGeneric) {
-    const actionItems = taskActions.map((a, ai) => {
-      const statusCls = (a.ActionStatus||'').toLowerCase().replace(/\s/g,'');
-      return `<div class="task-item" style="cursor:pointer" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')">
-        <div class="ti-left">
-          <div class="ti-name">${esc(a.Title||'—')}</div>
-          <div class="ti-meta">${esc(a.ActionType||'')} · ${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')}</div>
-        </div>
-        <span class="ts-pill ts-${statusCls}">${esc(a.ActionStatus||'—')}</span>
-      </div>
-      <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
-        <div class="te-row"><label class="te-label">Status</label>
-          <select class="form-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'ActionStatus',this.value)">
-            <option ${a.ActionStatus==='Unassigned'?'selected':''}>Unassigned</option>
-            <option ${a.ActionStatus==='In Progress'?'selected':''}>In Progress</option>
-            <option ${a.ActionStatus==='Completed'?'selected':''}>Completed</option>
-          </select>
-        </div>
-        <div class="te-row"><label class="te-label">Assigned</label>${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}</div>
-        <div class="te-row"><label class="te-label">Notes <span style="color:var(--red)">*</span></label>
-          <input class="form-input" value="${esc(a.Notes||'')}" placeholder="Required notation..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" />
-        </div>
-      </div>`;
+    const actionItems = taskActions.map((a,ai)=>{
+      const sc=(a.ActionStatus||'').toLowerCase().replace(/\s/g,'');
+      return `<div class="task-item"><div class="ti-left"><div class="ti-name">${esc(a.Title||'—')}</div><div class="ti-meta">${esc(a.ActionType||'')} · ${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')}</div></div><span class="ts-pill ts-${sc}">${esc(a.ActionStatus||'—')}</span></div>`;
     }).join('');
-
     genericSection = `
       <div class="mp-section">
-        <div class="mp-sec-label">Actions (${taskActions.length}) <span onclick="event.stopPropagation();openAddAction()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;margin-left:8px">＋ Add Action</span></div>
-        <div id="addActionForm" class="add-task-form" style="display:none">
-          <div class="form-row"><label class="form-label">Action Name</label><input class="form-input" id="newActionTitle" placeholder="What needs to be done..." onclick="event.stopPropagation()" /></div>
-          <div class="form-row"><label class="form-label">Action Type</label><input class="form-input" id="newActionType" placeholder="e.g. Phone call, Email, Meeting..." onclick="event.stopPropagation()" /></div>
-          <div class="form-row"><label class="form-label">Assigned To</label>${memberSelectHtml('')}</div>
-          <div class="form-btns">
-            <button class="btn-save" onclick="event.stopPropagation();saveNewAction()">Save Action</button>
-            <button class="btn-cancel" onclick="event.stopPropagation();closeAddAction()">Cancel</button>
-          </div>
+        <div class="mp-sec-label">Actions (${taskActions.length}) <span onclick="event.stopPropagation();openAddActionWin('${winId}',${t.id})" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;margin-left:8px">＋ Add</span></div>
+        <div id="${winId}_addActionForm" style="display:none;padding:10px;background:var(--navy-light);border-radius:var(--radius-sm);margin-bottom:8px">
+          <div class="form-row"><label class="form-label">Action Name</label><input class="form-input" id="${winId}_actionTitle" placeholder="What needs to be done..." onclick="event.stopPropagation()" /></div>
+          <div class="form-row"><label class="form-label">Type</label><input class="form-input" id="${winId}_actionType" placeholder="e.g. Phone call, Email..." onclick="event.stopPropagation()" /></div>
+          <div class="form-btns"><button class="btn-save" onclick="event.stopPropagation();saveNewActionWin('${winId}',${t.id})">Save</button><button class="btn-cancel" onclick="event.stopPropagation();document.getElementById('${winId}_addActionForm').style.display='none'">Cancel</button></div>
         </div>
-        <div id="actionList">${actionItems || '<div style="padding:8px 0;font-size:11px;color:var(--text-muted)">No actions yet.</div>'}</div>
+        <div>${actionItems||'<div style="padding:8px 0;font-size:11px;color:var(--text-muted)">No actions yet.</div>'}</div>
       </div>
       <div class="mp-section">
-        <div class="mp-sec-label">Notation <span style="color:var(--red)">*</span> <span style="font-size:9px;color:var(--text-muted)">(required on status change)</span></div>
-        <textarea class="form-input" id="tcNotesInput" rows="3" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Notes, outcome, or context...">${esc(t.Notes||'')}</textarea>
+        <div class="mp-sec-label">Notation <span style="color:var(--red)">*</span></div>
+        <textarea class="form-input" id="${winId}_generic_notes" rows="3" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Required on status change...">${esc(t.Notes||'')}</textarea>
       </div>
       <div class="mp-section" style="display:flex;flex-wrap:wrap;gap:8px">
-        <button class="action-btn success-btn" onclick="event.stopPropagation();tcComplete()">✓ Mark Complete</button>
-        <button class="action-btn danger" onclick="event.stopPropagation();tcNotCompleted()">✗ Not Completed</button>
+        <button class="action-btn success-btn" onclick="event.stopPropagation();tcCompleteWin('${winId}',${t.id})">✓ Complete</button>
+        <button class="action-btn danger" onclick="event.stopPropagation();tcNotCompletedWin('${winId}',${t.id})">✗ Not Completed</button>
       </div>`;
   }
 
-  document.getElementById('tcBody').innerHTML = `
-    ${assignSection}
-    ${bulkSection}
-    ${actionsSection}
-    ${genericSection}
-    <div class="mp-section">
-      <div class="mp-sec-label">Task Notes</div>
-      <textarea class="form-input" id="tcTaskNotes" rows="2" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Ongoing task-level notes...">${esc(t.Notes||'')}</textarea>
-      <button class="action-btn" style="margin-top:6px" onclick="event.stopPropagation();tcSaveNotes()">Save Notes</button>
-    </div>
-  `;
+  // Bulk section
+  let bulkSection = '';
+  if(isBulk) {
+    bulkSection = `<div class="mp-section">
+      <div class="mp-sec-label">Bulk Lead Upload</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Upload .csv — Required: Lead name, Business type, Contact name, Phone, Email</div>
+      <div class="bulk-drop-zone" onclick="event.stopPropagation();document.getElementById('${winId}_bulkFile').click()">
+        <div style="font-size:24px;margin-bottom:6px">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--teal)">Click to upload .csv</div>
+      </div>
+      <input type="file" id="${winId}_bulkFile" accept=".xlsx,.csv" style="display:none" onchange="event.stopPropagation();handleBulkFileWin(event,'${winId}',${t.id})" />
+      <div id="${winId}_bulkPreview" style="margin-top:10px"></div>
+      <button class="action-btn primary" id="${winId}_bulkBtn" style="display:none;margin-top:8px;width:100%" onclick="event.stopPropagation();createBulkLeadsWin('${winId}',${t.id})">✓ Load Valid Tasks</button>
+    </div>`;
+  }
 
-  document.getElementById('taskCardOverlay').dataset.taskId = t.id;
-  document.getElementById('taskCardOverlay').dataset.taskType = t.TaskType || '';
-  document.getElementById('taskCardOverlay').dataset.missionId = t.ParentMissionLookupId || '';
-  document.getElementById('taskCardOverlay').classList.remove('hidden');
+  // Notes section
+  const notesSection = `<div class="mp-section">
+    <div class="mp-sec-label">Task Notes</div>
+    <textarea class="form-input" id="${winId}_task_notes" rows="2" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Ongoing notes...">${esc(t.Notes||'')}</textarea>
+    <button class="action-btn" style="margin-top:6px" onclick="event.stopPropagation();tcSaveNotesWin('${winId}',${t.id})">Save Notes</button>
+  </div>`;
+
+  body.innerHTML = topBtns + `<div style="padding:0 0 80px 0">${assignSection}${workflowSection}${genericSection}${bulkSection}${notesSection}</div>`;
 }
 
-// ── Attempt outcome dropdowns ──
-function updateAttemptOutcomes(method) {
-  const sel = document.getElementById('af_attempt_outcome');
-  if(!sel) return;
-  const opts = {
-    Phone:      ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
-    Email:      ['Reply received','No reply','Bounced','Out of office reply'],
-    Text:       ['Reply received','No reply','Delivered','Failed to deliver'],
-    'In person':['Contacted','Not available','Referred to another contact'],
-  };
-  const choices = opts[method] || ['Completed','No response'];
-  sel.innerHTML = choices.map(c=>`<option>${c}</option>`).join('');
-}
+// ── Window-scoped action functions ──
 
-// ── Log a single contact attempt (does NOT close/progress task) ──
-async function logContactAttempt() {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  const method = document.getElementById('af_method')?.value || 'Phone';
-  const result = document.getElementById('af_attempt_outcome')?.value || '';
-  const dt = document.getElementById('af_datetime')?.value || '';
-  const notes = document.getElementById('af_notes')?.value?.trim() || '';
-  const attemptNum = allActions.filter(a =>
-    (String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)) &&
-    a.Title && a.Title.includes('Attempt')
-  ).length + 1;
-  const timestamp = dt ? new Date(dt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+async function tcAssignChange(winId, email, taskId) {
+  if(!email) return;
   try {
-    await createListItem('Actions', {
-      Title: `Attempt ${attemptNum}`,
-      ActionType: method,
-      ActionStatus: 'Completed',
-      PauseStatus: 'Active',
-      Notes: `${result}${notes?' | '+notes:''}`,
-      ParentTaskLookupId: parseInt(taskId),
-    });
-    // Auto set task to In Progress on first attempt
-    if(attemptNum === 1) {
-      await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
-    }
-    showToast(`Attempt ${attemptNum} logged — ${method}: ${result}`, 'success');
-    // Clear fields
-    if(document.getElementById('af_notes')) document.getElementById('af_notes').value = '';
-    if(document.getElementById('af_datetime')) document.getElementById('af_datetime').value = '';
+    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress', AssignedToText: email });
+    showToast('Assigned — status set to In Progress', 'success');
     await loadData();
-    // Re-open card with refreshed data
-    const updatedTask = allTasks.find(t => String(t.id) === String(taskId));
-    if(updatedTask) renderTaskCard(updatedTask, currentTaskMission);
+    refreshOpenTaskWindows();
   } catch(e) { showToast(e.message, 'error'); }
 }
 
-// ── Record final outcome for contact log action ──
-async function recordFinalOutcome(result, label, note) {
-  const finalNotes = (document.getElementById('af_final_notes')?.value||'').trim();
-  if(!finalNotes) {
-    showToast('Notation required before recording final outcome', 'error');
-    document.getElementById('af_final_notes')?.focus();
-    return;
-  }
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  // Log the final outcome as an action
-  const actionNum = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length + 1;
+async function tcSaveNotesWin(winId, taskId) {
+  const notes = (document.getElementById(winId+'_task_notes')?.value||'').trim();
+  try {
+    await updateListItem('Tasks', taskId, { Notes: notes });
+    showToast('Notes saved', 'success');
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+function updateAttemptOutcomesWin(winId, method) {
+  const sel = document.getElementById(winId+'_attempt_outcome');
+  if(!sel) return;
+  const opts = {
+    Phone:      ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
+    Email:      ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
+    Text:       ['Reply received','No reply','Delivered','Failed to deliver'],
+    'In person':['Contacted','Not available','Referred to another contact'],
+  };
+  sel.innerHTML = (opts[method]||['Completed','No response']).map(c=>`<option>${c}</option>`).join('');
+}
+
+async function logContactAttemptWin(winId, taskId) {
+  const method = document.getElementById(winId+'_method')?.value||'Phone';
+  const result = document.getElementById(winId+'_attempt_outcome')?.value||'';
+  const dt = document.getElementById(winId+'_datetime')?.value||'';
+  const notes = document.getElementById(winId+'_attempt_notes')?.value?.trim()||'';
+  const attempts = allActions.filter(a=>(String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId))&&a.Title&&a.Title.includes('Attempt'));
+  const attemptNum = attempts.length + 1;
   try {
     await createListItem('Actions', {
-      Title: `Action 1 — ${label}`,
-      ActionType: 'Final Outcome',
-      ActionStatus: 'Completed',
-      PauseStatus: 'Active',
-      Notes: `[${timestamp}] ${finalNotes}`,
-      ParentTaskLookupId: parseInt(taskId),
+      Title: `Attempt ${attemptNum}`, ActionType: method, ActionStatus: 'Completed', PauseStatus: 'Active',
+      Notes: `${result}${notes?' | '+notes:''}`, ParentTaskLookupId: parseInt(taskId),
     });
-  } catch(e) { console.warn('Action log failed:', e); }
+    if(attemptNum===1) await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
+    showToast(`Attempt ${attemptNum} logged — ${method}: ${result}`, 'success');
+    await loadData();
+    refreshOpenTaskWindows();
+  } catch(e) { showToast(e.message, 'error'); }
+}
 
-  if(result === 'close_fail') {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: note+': '+finalNotes });
-    showToast('Task closed — '+label, 'success');
-    closeTaskCard();
-  } else if(result === 'next') {
-    // Progress to next action — update task status to reflect Action 2
-    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress', Notes: note });
-    showToast('Contact made — progressing to Onboarding', 'success');
-    closeTaskCard();
+async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
+  const finalNotes = (document.getElementById(winId+'_final_notes')?.value||'').trim();
+  if(!finalNotes) { showToast('Notation required', 'error'); document.getElementById(winId+'_final_notes')?.focus(); return; }
+  const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const actionNum = allActions.filter(a=>String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length+1;
+  try {
+    await createListItem('Actions', { Title:`Action 1 — ${label}`, ActionType:'Final Outcome', ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${finalNotes}`, ParentTaskLookupId:parseInt(taskId) });
+  } catch(e) { console.warn(e); }
+  if(result==='close_fail') {
+    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
+    showToast('Task closed — '+label, 'success'); closeTaskWindow(winId);
+  } else if(result==='next') {
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    showToast('Contact made — progressing to Onboarding', 'success'); closeTaskWindow(winId);
   }
   await loadData();
 }
 
-// ── Outcome handler (for non-contact-log actions) ──
-async function recordOutcome(result, label, note) {
-  const notes = (document.getElementById('af_notes')?.value||'').trim();
-  if(!notes) { showToast('Notation is required before recording an outcome','error'); document.getElementById('af_notes')?.focus(); return; }
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  const missionId = document.getElementById('taskCardOverlay').dataset.missionId;
+async function recordOutcomeWin(winId, taskId, result, label, note) {
+  const notes = (document.getElementById(winId+'_action_notes')?.value||'').trim();
+  if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-
-  // Log the action to Actions list
-  const actionNum = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length + 1;
   try {
-    await createListItem('Actions', {
-      Title: `Action ${actionNum} — ${label}`,
-      ActionStatus: 'Completed',
-      PauseStatus: 'Active',
-      Notes: `[${timestamp}] ${notes}`,
-      ParentTaskLookupId: parseInt(taskId),
-    });
-  } catch(e) { console.warn('Action log failed:', e); }
-
-  if(result === 'close_success') {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: note });
-    showToast('Task closed — success ✓', 'success');
-    closeTaskCard();
-  } else if(result === 'close_fail') {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: note });
-    showToast('Task closed — '+label, 'success');
-    closeTaskCard();
-  } else if(result === 'stay') {
-    await updateListItem('Tasks', taskId, { Notes: note });
-    showToast('Outcome recorded — task remains open', 'success');
-    closeTaskCard();
-  } else if(result === 'next') {
-    // Progress to next action in workflow — mark current action complete in SharePoint via note
-    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress', Notes: note });
-    showToast(label + ' — moving to next step', 'success');
-    closeTaskCard();
-  } else if(result === 'next_2a' || result === 'next_2b' || result === 'next_3') {
+    await createListItem('Actions', { Title:`Action — ${label}`, ActionType:'Outcome', ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${notes}`, ParentTaskLookupId:parseInt(taskId) });
+  } catch(e) { console.warn(e); }
+  if(result==='close_success'||result==='close_fail') {
+    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
+    showToast(result==='close_success'?'Task closed — success ✓':'Task closed — '+label, 'success'); closeTaskWindow(winId);
+  } else if(result==='next') {
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    showToast(label+' — moving to next step', 'success'); closeTaskWindow(winId);
+  } else if(result==='stay') {
+    await updateListItem('Tasks', taskId, { Notes:note+': '+notes });
+    showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
+  } else if(result.startsWith('next_')) {
     const nextName = result==='next_2a'?'Action 2A — Log Bid Outcome':result==='next_2b'?'Action 2B — Training':'Action 3 — Log Bid Outcome';
-    await createListItem('Actions', {
-      Title: nextName, ActionStatus: 'Unassigned', PauseStatus: 'Active',
-      Notes: '', ParentTaskLookupId: parseInt(taskId),
-    });
-    await updateListItem('Tasks', taskId, { Notes: note });
-    showToast(nextName+' created', 'success');
-    closeTaskCard();
+    await createListItem('Actions', { Title:nextName, ActionStatus:'Unassigned', PauseStatus:'Active', Notes:'', ParentTaskLookupId:parseInt(taskId) });
+    await updateListItem('Tasks', taskId, { Notes:note });
+    showToast(nextName+' created', 'success'); closeTaskWindow(winId);
   }
   await loadData();
 }
 
-// ── Pause/Resume ──
-async function tcPause() {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  // Show inline pause form
-  const body = document.getElementById('tcBody');
-  const existing = document.getElementById('pauseInlineForm');
+async function tcCompleteWin(winId, taskId) {
+  const notes = (document.getElementById(winId+'_generic_notes')?.value||'').trim();
+  if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_generic_notes')?.focus(); return; }
+  await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:notes });
+  showToast('Task completed ✓', 'success'); closeTaskWindow(winId); await loadData();
+}
+
+async function tcNotCompletedWin(winId, taskId) {
+  const notes = (document.getElementById(winId+'_generic_notes')?.value||'').trim();
+  if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_generic_notes')?.focus(); return; }
+  await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:'Not completed: '+notes });
+  showToast('Task marked not completed', 'success'); closeTaskWindow(winId); await loadData();
+}
+
+async function tcPauseWin(winId, taskId) {
+  const body = document.getElementById(winId+'_body');
+  const existing = document.getElementById(winId+'_pauseForm');
   if(existing) { existing.remove(); return; }
   const form = document.createElement('div');
-  form.id = 'pauseInlineForm';
-  form.className = 'mp-section';
-  form.style.cssText = 'border:1px solid var(--amber);border-radius:var(--radius-md);padding:14px;margin-bottom:0';
-  form.innerHTML = `
-    <div class="mp-sec-label" style="color:var(--amber)">⏸ Pause Task</div>
-    <div class="form-row"><label class="form-label">Reason Code <span style="color:var(--red)">*</span></label>
-      <select class="form-input" id="pauseReasonSel" onclick="event.stopPropagation()">
-        <option value="">— Select reason —</option>
-        ${['Awaiting callback','Awaiting information','Scheduled — pending date','Responder unavailable','Lead unresponsive','Blocked — external','Mission on hold','Other'].map(r=>`<option>${r}</option>`).join('')}
-      </select>
-    </div>
-    <div class="form-row"><label class="form-label">Pause Note (optional)</label>
-      <input class="form-input" id="pauseNote" placeholder="Additional context..." onclick="event.stopPropagation()" />
-    </div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button class="action-btn warning" onclick="event.stopPropagation();submitPause(${taskId})">Confirm Pause</button>
-      <button class="action-btn" onclick="event.stopPropagation();document.getElementById('pauseInlineForm').remove()">Cancel</button>
+  form.id = winId+'_pauseForm';
+  form.style.cssText = 'padding:12px 16px;border-bottom:1px solid var(--amber);background:rgba(240,165,0,0.05)';
+  form.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:8px">⏸ PAUSE REASON</div>
+    <select class="form-input" id="${winId}_pauseReason" onclick="event.stopPropagation()" style="margin-bottom:8px">
+      <option value="">— Select reason —</option>
+      ${['Awaiting callback','Awaiting information','Scheduled — pending date','Responder unavailable','Lead unresponsive','Blocked — external','Mission on hold','Other'].map(r=>`<option>${r}</option>`).join('')}
+    </select>
+    <input class="form-input" id="${winId}_pauseNote" placeholder="Optional note..." onclick="event.stopPropagation()" style="margin-bottom:8px" />
+    <div style="display:flex;gap:8px">
+      <button class="action-btn warning" onclick="event.stopPropagation();submitPauseWin('${winId}',${taskId})">Confirm Pause</button>
+      <button class="action-btn" onclick="event.stopPropagation();document.getElementById('${winId}_pauseForm').remove()">Cancel</button>
     </div>`;
   body.prepend(form);
 }
 
-async function submitPause(taskId) {
-  const reason = document.getElementById('pauseReasonSel')?.value;
-  const note = document.getElementById('pauseNote')?.value||'';
-  if(!reason) { showToast('Please select a pause reason','error'); return; }
-  try {
-    await updateListItem('Tasks', taskId, { PauseStatus: 'Paused', PauseReason: reason, Notes: note||undefined });
-    showToast('Task paused','success');
-    closeTaskCard();
-    await loadData();
-  } catch(e) { showToast(e.message,'error'); }
+async function submitPauseWin(winId, taskId) {
+  const reason = document.getElementById(winId+'_pauseReason')?.value;
+  const note = document.getElementById(winId+'_pauseNote')?.value||'';
+  if(!reason) { showToast('Please select a pause reason', 'error'); return; }
+  await updateListItem('Tasks', taskId, { PauseStatus:'Paused', PauseReason:reason, Notes:note||undefined });
+  showToast('Task paused', 'success'); closeTaskWindow(winId); await loadData();
 }
 
-async function tcResume() {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  try {
-    await updateListItem('Tasks', taskId, { PauseStatus: 'Active', PauseReason: '' });
-    showToast('Task resumed','success');
-    closeTaskCard();
-    await loadData();
-  } catch(e) { showToast(e.message,'error'); }
+async function tcResume(winId, taskId) {
+  await updateListItem('Tasks', taskId, { PauseStatus:'Active', PauseReason:'' });
+  showToast('Task resumed', 'success'); closeTaskWindow(winId); await loadData();
 }
 
-// ── Generic complete/not completed ──
-async function tcComplete() {
-  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
-  if(!notes) { showToast('Notation required to close task','error'); document.getElementById('tcNotesInput')?.focus(); return; }
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  try {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: notes });
-    showToast('Task completed ✓','success');
-    closeTaskCard();
-    await loadData();
-  } catch(e) { showToast(e.message,'error'); }
+function openAddActionWin(winId, taskId) {
+  const form = document.getElementById(winId+'_addActionForm');
+  if(form) form.style.display = form.style.display==='none' ? '' : 'none';
 }
 
-async function tcNotCompleted() {
-  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
-  if(!notes) { showToast('Notation required','error'); document.getElementById('tcNotesInput')?.focus(); return; }
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  try {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: 'Not completed: '+notes });
-    showToast('Task marked not completed','success');
-    closeTaskCard();
-    await loadData();
-  } catch(e) { showToast(e.message,'error'); }
+async function saveNewActionWin(winId, taskId) {
+  const title = (document.getElementById(winId+'_actionTitle')?.value||'').trim();
+  const type  = (document.getElementById(winId+'_actionType')?.value||'').trim();
+  if(!title) { showToast('Action name required', 'error'); return; }
+  await createListItem('Actions', { Title:title, ActionType:type, ActionStatus:'Unassigned', PauseStatus:'Active', ParentTaskLookupId:parseInt(taskId) });
+  showToast('Action created', 'success'); await loadData(); refreshOpenTaskWindows();
 }
 
-// ── Assign change → auto In Progress ──
-async function tcAssignChange(email) {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  if(!email) return;
-  try {
-    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
-    showToast('Assigned — status set to In Progress','success');
-    await loadData();
-  } catch(e) { console.warn('Status update failed',e); }
-}
-
-async function tcSaveNotes() {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  const notes = (document.getElementById('tcTaskNotes')?.value||'').trim();
-  try {
-    await updateListItem('Tasks', taskId, { Notes: notes });
-    showToast('Notes saved','success');
-  } catch(e) { showToast(e.message,'error'); }
-}
-
-// ── Bulk Leads ──
-let bulkLeadRows = [];
-function handleBulkFile(event) {
+function handleBulkFileWin(event, winId, taskId) {
   const file = event.target.files[0];
-  if (!file) return;
-  const preview = document.getElementById('bulkPreview');
-  preview.innerHTML = '<div style="font-size:11px;color:var(--text-dim)">Reading file...</div>';
-
-  if (file.name.endsWith('.csv')) {
+  if(!file) return;
+  if(file.name.endsWith('.csv')) {
     const reader = new FileReader();
-    reader.onload = e => parseBulkCSV(e.target.result);
+    reader.onload = e => parseBulkCSVWin(e.target.result, winId, taskId);
     reader.readAsText(file);
   } else {
-    // xlsx — use SheetJS from CDN if available, else prompt CSV
-    preview.innerHTML = '<div style="font-size:11px;color:var(--amber)">⚠ For .xlsx files please save as .csv first, then upload.</div>';
+    document.getElementById(winId+'_bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--amber)">⚠ Please save as .csv first.</div>';
   }
 }
 
-function parseBulkCSV(text) {
+function parseBulkCSVWin(text, winId, taskId) {
+  // Reuse same parse logic, just target window-specific elements
   const lines = text.trim().split('\n');
-  const raw_headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
-  // Map flexible column names
+  const raw_headers = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/"/g,''));
   const colMap = {};
-  raw_headers.forEach((h,i) => {
-    if(h.includes('lead name')||h==='lead'||h==='name'||h==='title') colMap.leadName = i;
-    if(h.includes('business')||h.includes('type')) colMap.bizType = i;
-    if(h.includes('contact')) colMap.contact = i;
-    if(h.includes('phone')) colMap.phone = i;
-    if(h.includes('email')) colMap.email = i;
-    if(h==='notes'||h.includes('note')) colMap.notes = i;
+  raw_headers.forEach((h,i)=>{
+    if(h.includes('lead')||h==='name'||h==='title') colMap.leadName=i;
+    if(h.includes('business')||h.includes('type')) colMap.bizType=i;
+    if(h.includes('contact')) colMap.contact=i;
+    if(h.includes('phone')) colMap.phone=i;
+    if(h.includes('email')) colMap.email=i;
+    if(h==='notes'||h.includes('note')) colMap.notes=i;
   });
-
-  if(colMap.leadName === undefined) {
-    document.getElementById('bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--red)">✗ No lead name column found. Expected: "Lead name", "Name", or "Title".</div>';
+  if(colMap.leadName===undefined) {
+    document.getElementById(winId+'_bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--red)">✗ No lead name column found.</div>';
     return;
   }
-
-  const allRows = lines.slice(1).filter(l=>l.trim()).map(l => {
-    const cols = l.split(',').map(c => c.trim().replace(/^"|"$/g,''));
-    const name = colMap.leadName!==undefined ? cols[colMap.leadName]||'' : '';
-    return {
-      leadName: name,
-      bizType: colMap.bizType!==undefined ? cols[colMap.bizType]||'' : '',
-      contact: colMap.contact!==undefined ? cols[colMap.contact]||'' : '',
-      phone: colMap.phone!==undefined ? cols[colMap.phone]||'' : '',
-      email: colMap.email!==undefined ? cols[colMap.email]||'' : '',
-      notes: colMap.notes!==undefined ? cols[colMap.notes]||'' : '',
-      valid: !!name,
-    };
+  const allRows = lines.slice(1).filter(l=>l.trim()).map(l=>{
+    const cols=l.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+    return { leadName:colMap.leadName!==undefined?cols[colMap.leadName]||'':'', bizType:colMap.bizType!==undefined?cols[colMap.bizType]||'':'', contact:colMap.contact!==undefined?cols[colMap.contact]||'':'', phone:colMap.phone!==undefined?cols[colMap.phone]||'':'', email:colMap.email!==undefined?cols[colMap.email]||'':'', notes:colMap.notes!==undefined?cols[colMap.notes]||'':'', valid:!!cols[colMap.leadName||0] };
   });
-
-  bulkLeadRows = allRows;
-  const valid = allRows.filter(r=>r.valid);
-  const flagged = allRows.filter(r=>!r.valid);
-
-  const preview = document.getElementById('bulkPreview');
-  preview.innerHTML = `
-    <div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:8px">
-      ${allRows.length} rows · ${valid.length} valid · ${flagged.length} flagged
-    </div>
-    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:8px">
-      <div style="display:grid;grid-template-columns:1fr 100px 100px 110px 80px;gap:8px;padding:6px 10px;background:var(--navy-light);font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">
-        <div>Lead Name</div><div>Business Type</div><div>Contact</div><div>Phone</div><div>Status</div>
-      </div>
-      ${allRows.map(r=>`
-        <div style="display:grid;grid-template-columns:1fr 100px 100px 110px 80px;gap:8px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px;background:${r.valid?'':'rgba(232,69,60,0.06)'}">
-          <div style="color:${r.valid?'var(--text)':'var(--red)'}${r.valid?'':';font-style:italic'}">${esc(r.leadName||'[missing]')}</div>
-          <div style="color:var(--text-dim)">${esc(r.bizType)}</div>
-          <div style="color:var(--text-dim)">${esc(r.contact)}</div>
-          <div style="color:var(--text-dim)">${esc(r.phone)}</div>
-          <div><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${r.valid?'rgba(56,201,100,0.15)':'rgba(232,69,60,0.15)'};color:${r.valid?'#38c964':'var(--red)'}">${r.valid?'Valid':'Missing name'}</span></div>
-        </div>`).join('')}
-    </div>
-    ${flagged.length?`<div style="font-size:10px;color:var(--text-muted)">${flagged.length} flagged row${flagged.length>1?'s':''} will be skipped.</div>`:''}
-  `;
-  if(valid.length > 0) document.getElementById('bulkCreateBtn').style.display = '';
-  document.getElementById('bulkCreateBtn').textContent = `✓ Load ${valid.length} valid task${valid.length>1?'s':''}`;
+  const valid=allRows.filter(r=>r.valid), flagged=allRows.filter(r=>!r.valid);
+  document.getElementById(winId+'_bulkPreview').innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:8px">${allRows.length} rows · ${valid.length} valid · ${flagged.length} flagged</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;max-height:150px;overflow-y:auto">${allRows.map(r=>`<div style="display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid var(--border);font-size:11px;background:${r.valid?'':'rgba(232,69,60,0.06)'}">
+      <span style="color:${r.valid?'var(--text)':'var(--red)'}">${esc(r.leadName||'[missing]')}</span>
+      <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;background:${r.valid?'rgba(56,201,100,0.15)':'rgba(232,69,60,0.15)'};color:${r.valid?'#38c964':'var(--red)'}">${r.valid?'Valid':'Missing'}</span>
+    </div>`).join('')}</div>`;
+  window['_bulkRows_'+winId] = allRows;
+  const btn = document.getElementById(winId+'_bulkBtn');
+  if(btn && valid.length) { btn.style.display=''; btn.textContent=`✓ Load ${valid.length} valid task${valid.length>1?'s':''}`; }
 }
 
-async function createBulkLeads() {
-  if (!bulkLeadRows.length || !currentTask) return;
-  const btn = document.getElementById('bulkCreateBtn');
-  btn.disabled = true;
-  btn.textContent = 'Creating...';
-  let created = 0;
-  const validRows = bulkLeadRows.filter(r=>r.valid);
-  for (const row of validRows) {
-    const notesParts = [];
+async function createBulkLeadsWin(winId, taskId) {
+  const rows = (window['_bulkRows_'+winId]||[]).filter(r=>r.valid);
+  if(!rows.length) return;
+  const task = allTasks.find(t=>String(t.id)===String(taskId));
+  const missionId = task ? task.ParentMissionLookupId : null;
+  let created=0;
+  for(const row of rows) {
+    const notesParts=[];
     if(row.bizType) notesParts.push('Business type: '+row.bizType);
     if(row.contact) notesParts.push('Contact: '+row.contact);
     if(row.phone) notesParts.push('Phone: '+row.phone);
     if(row.email) notesParts.push('Email: '+row.email);
     if(row.notes) notesParts.push(row.notes);
     try {
-      await createListItem('Tasks', {
-        Title: row.leadName,
-        TaskType: 'New Lead',
-        TaskStatus: 'Unassigned',
-        PauseStatus: 'Active',
-        ClosingTask: false,
-        ParentMissionLookupId: currentTask.ParentMissionLookupId,
-        Notes: notesParts.join(' | ')
-      });
+      await createListItem('Tasks', { Title:row.leadName, TaskType:'New Lead', TaskStatus:'Unassigned', PauseStatus:'Active', ClosingTask:false, ParentMissionLookupId:missionId, Notes:notesParts.join(' | ') });
       created++;
-    } catch(e) { console.warn('Failed to create lead:', row.leadName, e); }
+    } catch(e) { console.warn(e); }
   }
-  showToast(`${created} lead tasks created`, 'success');
-  bulkLeadRows = [];
-  closeTaskCard();
-  await loadData();
+  showToast(`${created} lead tasks created`, 'success'); closeTaskWindow(winId); await loadData();
 }
 
-// ── Actions within task card ──
-function openAddAction() {
-  const form = document.getElementById('addActionForm');
-  if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
-}
-function closeAddAction() {
-  const form = document.getElementById('addActionForm');
-  if (form) form.style.display = 'none';
-  const t = document.getElementById('newActionTitle'); if(t) t.value = '';
-  const ty = document.getElementById('newActionType'); if(ty) ty.value = '';
-}
-function toggleActionExpand(event, id) {
-  event.stopPropagation();
-  const el = document.getElementById(id);
-  if (el) el.classList.toggle('hidden');
-}
-async function saveNewAction() {
-  if (!currentTask || !siteId) return;
-  const title = (document.getElementById('newActionTitle')?.value||'').trim();
-  const type  = (document.getElementById('newActionType')?.value||'').trim();
-  const assignEl = document.getElementById('tcAssignInput');
-  const assigned = assignEl ? assignEl.value : '';
-  if (!title) { showToast('Please enter an action title','error'); return; }
-  try {
-    await createListItem('Actions', {
-      Title: title,
-      ActionType: type,
-      ActionStatus: 'Unassigned',
-      PauseStatus: 'Active',
-      ParentTaskLookupId: currentTask.id,
-    });
-    showToast('Action created','success');
-    closeAddAction();
-    await loadData();
-    // Refresh task card
-    const updatedTask = allTasks.find(t => t.id === currentTask.id);
-    if (updatedTask) renderTaskCard(updatedTask, currentTaskMission);
-  } catch(e) { showToast(e.message,'error'); }
-}
-async function updateActionField(actionId, field, val) {
-  try {
-    await updateListItem('Actions', actionId, { [field]: val });
-    showToast('Action updated','success');
-  } catch(e) { showToast(e.message,'error'); }
-}
-
-// ── Task save ──
-async function tcSave() {
-  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
-  const status = document.getElementById('tcStatusSel').value;
-  const pauseReason = document.getElementById('tcPauseSel')?.value || '';
-  const assignEl = document.getElementById('tcAssignInput');
-  const assignTo = assignEl ? assignEl.value.trim() : '';
-  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
-  const fields = { TaskStatus: status, Notes: notes, PauseStatus: status==='Paused'?'Paused':'Active' };
-  if (pauseReason) fields.PauseReason = pauseReason;
-  try {
-    await updateListItem('Tasks', taskId, fields);
-    if (assignTo) {
-      // AssignedTo is a Person field — use Graph user lookup
-      try {
-        const member = groupMembers.find(m => m.email === assignTo || m.name === assignTo);
-        if (member) {
-          await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { 'AssignedTo@odata.type': '#microsoft.graph.fieldValueSet', AssignedToLookupId: member.id });
-        }
-      } catch(e) { /* person field assignment may need different approach */ }
-    }
-    showToast('Task saved','success');
-    closeTaskCard();
-    await loadData();
-  } catch(e) { showToast(e.message,'error'); }
-}
-
-function closeTaskCard(e) {
-  if (e && e.target !== document.getElementById('taskCardOverlay')) return;
-  document.getElementById('taskCardOverlay').classList.add('hidden');
-  currentTask = null;
-  currentTaskMission = null;
-}
+function closeTaskCard(e) { /* legacy — no-op, windows handle their own close */ }
+function renderTaskCard(t, parentMission) { openTaskCard(t, parentMission); }
 
 function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); currentMission = null; }
 
