@@ -1046,12 +1046,12 @@ function buildAuthUrl(redirectUri, prompt) {
 }
 
 function signIn() {
-  const redirectUri = 'https://downtimetrace.com/warroom';
+  const redirectUri = 'https://warroom.downtimetrace.com';
   openAuthPopup(redirectUri);
 }
 
 function openAuthPopup(redirectUri) {
-  redirectUri = 'https://downtimetrace.com/warroom';
+  redirectUri = 'https://warroom.downtimetrace.com';
   const url = buildAuthUrl(redirectUri, null);
   const popup = window.open(url, 'ert_auth', 'width=520,height=620,left=200,top=100');
 
@@ -1685,7 +1685,7 @@ setInterval(()=>{ if(token) loadData(); }, 5*60*1000);
   const cached = sessionStorage.getItem('ert_token');
   if (cached) { token = cached; init(); return; }
 
-  const redirectUri = 'https://downtimetrace.com/warroom';
+  const redirectUri = 'https://warroom.downtimetrace.com';
   const silentUrl = buildAuthUrl(redirectUri, 'none'); // prompt=none uses existing session
 
   const iframe = document.createElement('iframe');
