@@ -414,7 +414,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1fr 200px 140px 120px 110px 90px;
+  grid-template-columns: 1fr 180px 120px 110px 130px 110px 80px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -425,7 +425,7 @@ body::after {
 }
 .task-row-header {
   display: grid;
-  grid-template-columns: 1fr 180px 120px 100px 90px;
+  grid-template-columns: 1fr 180px 120px 110px 130px 110px 80px;
   gap: 12px;
   padding: 7px 18px;
   font-size: 10px;
@@ -1002,16 +1002,37 @@ body::after {
     </div>
   </div>
   <div class="task-pool">
-    <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 200px 140px 120px 110px 90px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
+    <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 180px 120px 110px 130px 110px 80px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
       <div class="th-col" onclick="sortTasks('Title')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Task <span id="sort-Title"></span></div>
       <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission <span id="sort-ParentMission"></span></div>
       <div class="th-col" onclick="sortTasks('TaskType')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Type <span id="sort-TaskType"></span></div>
       <div class="th-col" onclick="sortTasks('TaskStatus')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Status <span id="sort-TaskStatus"></span></div>
+      <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Action Status</div>
       <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Assigned To</div>
       <div class="th-col" onclick="sortTasks('age')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Age <span id="sort-age"></span></div>
     </div>
     <div id="taskPoolBody">
       <div class="loading-state" style="padding:36px;"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- MISSION ARCHIVE -->
+  <div class="sec-hdr" style="margin-top:32px">
+    <div class="sec-title">Mission Archive</div>
+    <button class="fbtn" id="archiveToggleBtn" onclick="toggleArchive()" style="margin-left:auto">Show Closed Missions</button>
+  </div>
+  <div id="archiveSection" style="display:none">
+    <div class="task-pool">
+      <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 140px 120px 100px 100px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.03)">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Mission</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">TT Number</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Type</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Tasks</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Closed</div>
+      </div>
+      <div id="archiveBody">
+        <div class="loading-state" style="padding:24px"><div class="spinner"></div></div>
+      </div>
     </div>
   </div>
 
@@ -1089,6 +1110,8 @@ let groupMembers = [];
 let taskFilter = 'all';
 let taskSortCol = 'age';
 let taskSortDir = 1;
+let closedMissions = [];
+let archiveVisible = false;
 
 // ═══════════════════════════════
 // AUTH
@@ -1231,13 +1254,16 @@ async function loadData() {
       getListItems('Tasks'),
       getListItems('Actions')
     ]);
-    allMissions = mi.map(i => ({ id: i.id, ...i.fields })).filter(m => m.MissionStatus !== 'Closed');
+    const allMissionsRaw = mi.map(i => ({ id: i.id, ...i.fields }));
+    allMissions = allMissionsRaw.filter(m => m.MissionStatus !== 'Closed');
+    closedMissions = allMissionsRaw.filter(m => m.MissionStatus === 'Closed');
     allTasks    = ti.map(i => ({ id: i.id, ...i.fields }));
     allActions  = ai.map(i => ({ id: i.id, ...i.fields }));
     if(!groupMembers.length) loadGroupMembers();
     renderStats();
     renderGrid();
     renderPool();
+    if(archiveVisible) renderArchive();
     document.getElementById('sRefresh').textContent = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
   } catch(e) {
     showToast(e.message, 'error');
@@ -1346,6 +1372,39 @@ function cardHtml(m, idx) {
 // ═══════════════════════════════
 // UNASSIGNED POOL
 // ═══════════════════════════════
+function toggleArchive() {
+  archiveVisible = !archiveVisible;
+  const section = document.getElementById('archiveSection');
+  const btn = document.getElementById('archiveToggleBtn');
+  section.style.display = archiveVisible ? '' : 'none';
+  btn.textContent = archiveVisible ? 'Hide Closed Missions' : 'Show Closed Missions';
+  btn.classList.toggle('active', archiveVisible);
+  if(archiveVisible) renderArchive();
+}
+
+function renderArchive() {
+  const body = document.getElementById('archiveBody');
+  if(!body) return;
+  if(!closedMissions.length) {
+    body.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-icon">📁</div><div class="empty-text">No closed missions yet</div></div>`;
+    return;
+  }
+  body.innerHTML = closedMissions
+    .sort((a,b) => (b.DateOpened||'') > (a.DateOpened||'') ? 1 : -1)
+    .map((m, i) => {
+      const mTasks = allTasks.filter(t => String(t.ParentMissionLookupId) === String(m.id));
+      const closed = new Date(m.Modified||m.DateOpened||'').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const mJson = JSON.stringify(m).replace(/"/g,'&quot;');
+      return `<div style="display:grid;grid-template-columns:1fr 140px 120px 100px 100px;gap:10px;padding:11px 18px;border-top:1px solid var(--border);font-size:12px;cursor:pointer;transition:background 0.12s;animation:fadeup 0.2s ease both" onmouseover="this.style.background='rgba(56,190,201,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();openDetail(${mJson})">
+        <div style="font-weight:600;color:var(--text-dim)">${esc(m.Title||'—')}</div>
+        <div style="color:var(--text-muted);font-family:monospace;font-size:11px">${esc(m.TTNumber||'—')}</div>
+        <div style="color:var(--text-muted);font-size:11px">${esc(m.Urgency||'—')}</div>
+        <div style="color:var(--text-muted);font-size:11px">${mTasks.length} task${mTasks.length!==1?'s':''}</div>
+        <div style="color:var(--text-muted);font-size:11px">${closed}</div>
+      </div>`;
+    }).join('');
+}
+
 function setTaskFilter(f, btn) {
   taskFilter = f;
   document.querySelectorAll('#taskFilters .fbtn').forEach(b => b.classList.remove('active'));
@@ -1365,7 +1424,7 @@ function sortTasks(col) {
 }
 
 function renderPool() {
-  let tasks = allTasks.filter(t => !t.ClosingTask);
+  let tasks = allTasks.filter(t => !t.ClosingTask && t.TaskStatus !== 'Completed');
   // Filter
   if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
   else if(taskFilter === 'inprogress') tasks = tasks.filter(t => t.TaskStatus === 'In Progress');
@@ -1405,11 +1464,17 @@ function renderPool() {
     const tJson = JSON.stringify(t).replace(/"/g,'&quot;');
     const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
     const statusCls = t.TaskStatus==='Completed'?'ts-completed':t.TaskStatus==='In Progress'?'ts-inprogress':t.PauseStatus==='Paused'?'ts-paused':'ts-unassigned';
+    // Get latest action for this task
+    const taskActs = allActions.filter(a => String(a.ParentTaskLookupId)===String(t.id)||String(a.ParentTask)===String(t.id));
+    const latestAction = taskActs.length ? taskActs[taskActs.length-1] : null;
+    const actionStatus = latestAction ? (latestAction.Title||'').replace(/^Action \d+[A-Z]?\s*—\s*/,'').substring(0,20) : '—';
+    const actionStatusCls = latestAction?.ActionStatus==='Completed'?'color:var(--text-muted)':latestAction?.ActionStatus==='In Progress'?'color:var(--teal)':'color:var(--text-dim)';
     return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:pointer" onclick="event.stopPropagation();openTaskCard(${tJson},${mJson||'null'})">
       <div class="tn">${esc(t.Title||'—')}</div>
       <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(mName)}</div>
       <div><span class="tt-badge">${esc(t.TaskType||'—')}</span></div>
-      <div><span class="ts-pill ${statusCls}">${esc(t.TaskStatus==='In Progress'?'In Progress':t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
+      <div><span class="ts-pill ${statusCls}">${esc(t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
+      <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${actionStatusCls}">${esc(actionStatus)}</div>
       <div class="ta-assigned" style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(assigned)}</div>
       <div class="ta${age!==null&&age>4?' urgent':''}">${age!==null?age+'h ago':'—'}</div>
     </div>`;
