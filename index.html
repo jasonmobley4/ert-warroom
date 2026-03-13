@@ -1785,18 +1785,39 @@ const WF_GENERIC = { free: true };
 // GROUP MEMBERS
 // ═══════════════════════════════
 async function loadGroupMembers() {
+  // Strategy 1: Graph User.ReadBasic.All (needs that permission granted in Azure)
   try {
-    const r = await gGet(`/sites/${siteId}/members`);
-    groupMembers = (r.value||[]).map(m=>({name:m.displayName,email:m.mail||m.userPrincipalName,id:m.id}));
-  } catch(e) {
-    try {
-      const r2 = await gGet(`/groups?$filter=displayName eq 'ERT War Room'&$select=id`);
-      if(r2.value&&r2.value[0]) {
-        const r3 = await gGet(`/groups/${r2.value[0].id}/members?$select=displayName,mail,userPrincipalName,id`);
-        groupMembers = (r3.value||[]).map(m=>({name:m.displayName,email:m.mail||m.userPrincipalName,id:m.id}));
-      }
-    } catch(e2){ console.warn('Could not load group members',e2); }
-  }
+    const r = await gGet(`/users?$select=displayName,mail,userPrincipalName,id&$top=50&$filter=accountEnabled eq true`);
+    if(r.value && r.value.length) {
+      groupMembers = r.value
+        .filter(u => u.mail && !u.mail.includes('#EXT#'))
+        .map(m => ({ name: m.displayName, email: m.mail||m.userPrincipalName, id: m.id }));
+      if(groupMembers.length) return;
+    }
+  } catch(e) { /* Permission not yet granted — fall through */ }
+
+  // Strategy 2: SharePoint ERT Members list (manual, always works)
+  try {
+    const items = await getListItems('ERT Members');
+    if(items && items.length) {
+      groupMembers = items.map(i => ({
+        name: i.fields?.Title || i.fields?.MemberName || '',
+        email: i.fields?.Email || i.fields?.MemberEmail || '',
+        id: i.id
+      })).filter(m => m.name && m.email);
+      if(groupMembers.length) return;
+    }
+  } catch(e) { /* List doesn't exist yet */ }
+
+  // Strategy 3: /me/colleagues via OrgChart (People.Read scope)
+  try {
+    const r = await gGet(`/me/people?$top=50&$filter=personType/class eq 'Person' and personType/subclass eq 'OrganizationUser'`);
+    if(r.value && r.value.length) {
+      groupMembers = r.value
+        .filter(p => p.scoredEmailAddresses && p.scoredEmailAddresses[0])
+        .map(p => ({ name: p.displayName, email: p.scoredEmailAddresses[0].address, id: p.id }));
+    }
+  } catch(e) { console.warn('Could not load members via people API', e); }
 }
 
 function memberSelectHtml(selectedEmail) {
