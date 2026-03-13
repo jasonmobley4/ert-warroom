@@ -984,13 +984,13 @@ body::after {
       <div class="mp-stripe" id="mpStripe"></div>
       <div class="mp-top">
         <div class="mp-title" id="mpTitle">—</div>
-        <button class="mp-close" onclick="closeModal()">✕</button>
+        <button class="mp-close" onclick="event.stopPropagation();closeModal()">✕</button>
       </div>
       <div class="mp-badges" id="mpBadges"></div>
       <!-- STATUS CHANGE -->
       <div style="display:flex;gap:8px;align-items:center;">
         <label style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;">Status</label>
-        <select class="status-select" id="statusSelect" onchange="changeStatus(this.value)">
+        <select class="status-select" id="statusSelect" onclick="event.stopPropagation()" onchange="event.stopPropagation();changeStatus(this.value)">
           <option value="New">New</option>
           <option value="In Progress">In Progress</option>
           <option value="Resolved">Resolved</option>
@@ -1001,9 +1001,9 @@ body::after {
 
     <!-- ACTION BUTTONS -->
     <div class="mp-actions" id="mpActions">
-      <button class="action-btn warning" id="holdBtn" onclick="toggleHold()">⏸ Put On Hold</button>
-      <button class="action-btn primary" onclick="openAddTask()">＋ Add Task</button>
-      <button class="action-btn" onclick="focusLogInput()">📝 Add Note</button>
+      <button class="action-btn warning" id="holdBtn" onclick="event.stopPropagation();toggleHold()">⏸ Put On Hold</button>
+      <button class="action-btn primary" onclick="event.stopPropagation();openAddTask()">＋ Add Task</button>
+      <button class="action-btn" onclick="event.stopPropagation();focusLogInput()">📝 Add Note</button>
     </div>
 
     <div class="mp-body" id="mpBody"></div>
@@ -1381,7 +1381,7 @@ function openDetail(m) {
 
     <!-- Tasks -->
     <div class="mp-section">
-      <div class="mp-sec-label">Tasks (${tasks.length}) <span id="addTaskToggle" onclick="openAddTask()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;">+ Add Task</span></div>
+      <div class="mp-sec-label">Tasks (${tasks.length}) <span id="addTaskToggle" onclick="event.stopPropagation();openAddTask()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;">+ Add Task</span></div>
       <div id="addTaskForm" class="add-task-form">
         <div class="form-row">
           <label class="form-label">Task Title</label>
@@ -1397,8 +1397,8 @@ function openDetail(m) {
           </select>
         </div>
         <div class="form-btns">
-          <button class="btn-save" onclick="saveNewTask()">Save Task</button>
-          <button class="btn-cancel" onclick="closeAddTask()">Cancel</button>
+          <button class="btn-save" onclick="event.stopPropagation();saveNewTask()">Save Task</button>
+          <button class="btn-cancel" onclick="event.stopPropagation();closeAddTask()">Cancel</button>
         </div>
       </div>
       <div id="taskList">
@@ -1445,8 +1445,8 @@ function openDetail(m) {
         ${m.MissionNotes ? `<div class="log-entry"><div class="log-dot"></div><div class="log-content"><div class="log-text">${esc(m.MissionNotes)}</div><div class="log-time">From mission record</div></div></div>` : '<div style="padding:12px 0;font-size:11px;color:var(--text-muted);">No notes yet.</div>'}
       </div>
       <div class="log-input-row">
-        <input class="log-input" id="logInput" placeholder="Add a note or update..." onkeydown="if(event.key==='Enter')addLogEntry()" />
-        <button class="btn-log" onclick="addLogEntry()">Add Note</button>
+        <input class="log-input" id="logInput" placeholder="Add a note or update..." onclick="event.stopPropagation()" onkeydown="event.stopPropagation();if(event.key==='Enter')addLogEntry()" />
+        <button class="btn-log" onclick="event.stopPropagation();addLogEntry()">Add Note</button>
       </div>
     </div>
 
