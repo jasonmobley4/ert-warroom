@@ -414,7 +414,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1fr 180px 120px 100px 90px;
+  grid-template-columns: 1fr 200px 140px 120px 110px 90px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -621,6 +621,10 @@ body::after {
 .action-btn.warning:hover { background: rgba(240,165,0,0.2); }
 .action-btn.primary { border-color: rgba(56,190,201,0.35); color: var(--teal); background: var(--teal-soft); }
 .action-btn.primary:hover { background: var(--teal-glow); }
+.action-btn.success-btn { border-color: rgba(56,201,100,0.4); color: #38c964; background: rgba(56,201,100,0.08); }
+.action-btn.success-btn:hover { background: rgba(56,201,100,0.15); }
+.action-btn.danger { border-color: rgba(232,69,60,0.4); color: var(--red); background: var(--red-soft); }
+.action-btn.danger:hover { background: rgba(232,69,60,0.2); }
 .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── STATUS CHANGE ── */
@@ -921,8 +925,8 @@ body::after {
   .modal-panel { width: 100vw; }
   .stat-bar { overflow-x: auto; }
   .stat { min-width: 110px; }
-  .task-row { grid-template-columns: 1fr 90px; }
-  .task-row .ta-actions { display: none; }
+  .task-row { grid-template-columns: 1fr 100px; }
+  .task-row .ta-actions, .task-row .ta-assigned { display: none; }
   .task-row .tt-badge, .task-row .ta { display: none; }
 }
 </style>
@@ -986,20 +990,25 @@ body::after {
     </div>
   </div>
 
-  <div class="sec-hdr">
-    <div class="sec-title">Unassigned Tasks</div>
+  <!-- ALL TASKS TABLE -->
+  <div class="sec-hdr" style="margin-top:32px">
+    <div class="sec-title">All Tasks</div>
+    <div class="filters" id="taskFilters">
+      <button class="fbtn active" onclick="setTaskFilter('all',this)">All</button>
+      <button class="fbtn" onclick="setTaskFilter('unassigned',this)">Unassigned</button>
+      <button class="fbtn" onclick="setTaskFilter('inprogress',this)">In Progress</button>
+      <button class="fbtn" onclick="setTaskFilter('paused',this)">Paused</button>
+      <button class="fbtn" onclick="setTaskFilter('completed',this)">Completed</button>
+    </div>
   </div>
   <div class="task-pool">
-    <div class="pool-hdr">
-      <div class="pool-title">⚠ Needs Assignment</div>
-      <div class="pool-count" id="poolCount">loading...</div>
-    </div>
-    <div class="task-row-header">
-      <div>Task</div>
-      <div>Parent Mission</div>
-      <div>Type</div>
-      <div>Actions</div>
-      <div>Age</div>
+    <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 200px 140px 120px 110px 90px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
+      <div class="th-col" onclick="sortTasks('Title')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Task <span id="sort-Title"></span></div>
+      <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission <span id="sort-ParentMission"></span></div>
+      <div class="th-col" onclick="sortTasks('TaskType')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Type <span id="sort-TaskType"></span></div>
+      <div class="th-col" onclick="sortTasks('TaskStatus')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Status <span id="sort-TaskStatus"></span></div>
+      <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Assigned To</div>
+      <div class="th-col" onclick="sortTasks('age')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Age <span id="sort-age"></span></div>
     </div>
     <div id="taskPoolBody">
       <div class="loading-state" style="padding:36px;"><div class="spinner"></div></div>
@@ -1236,7 +1245,7 @@ function renderStats() {
   document.getElementById('sP1').textContent         = allMissions.filter(m => uLevel(m.Urgency)===1).length;
   document.getElementById('sP2').textContent         = allMissions.filter(m => uLevel(m.Urgency)===2).length;
   document.getElementById('sOnHold').textContent     = allMissions.filter(m => isOnHold(m)).length;
-  document.getElementById('sUnassigned').textContent = allTasks.filter(t => t.TaskStatus==='Unassigned' && t.PauseStatus!=='Paused' && !t.ClosingTask).length;
+  document.getElementById('sUnassigned').textContent = allTasks.filter(t => t.TaskStatus==='Unassigned' && !t.ClosingTask).length;
 }
 
 // ═══════════════════════════════
@@ -1329,28 +1338,71 @@ function cardHtml(m, idx) {
 // ═══════════════════════════════
 // UNASSIGNED POOL
 // ═══════════════════════════════
+function setTaskFilter(f, btn) {
+  taskFilter = f;
+  document.querySelectorAll('#taskFilters .fbtn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderPool();
+}
+
+function sortTasks(col) {
+  if(taskSortCol === col) taskSortDir *= -1;
+  else { taskSortCol = col; taskSortDir = 1; }
+  // Update sort indicators
+  ['Title','ParentMission','TaskType','TaskStatus','age'].forEach(c => {
+    const el = document.getElementById('sort-'+c);
+    if(el) el.textContent = c === taskSortCol ? (taskSortDir === 1 ? ' ↑' : ' ↓') : '';
+  });
+  renderPool();
+}
+
 function renderPool() {
-  const tasks = allTasks.filter(t => t.TaskStatus==='Unassigned' && t.PauseStatus!=='Paused' && !t.ClosingTask);
-  document.getElementById('poolCount').textContent = `${tasks.length} task${tasks.length!==1?'s':''}`;
+  let tasks = allTasks.filter(t => !t.ClosingTask);
+  // Filter
+  if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
+  else if(taskFilter === 'inprogress') tasks = tasks.filter(t => t.TaskStatus === 'In Progress');
+  else if(taskFilter === 'paused') tasks = tasks.filter(t => t.PauseStatus === 'Paused');
+  else if(taskFilter === 'completed') tasks = tasks.filter(t => t.TaskStatus === 'Completed');
+
+  // Sort
+  tasks = tasks.sort((a,b) => {
+    let av, bv;
+    if(taskSortCol === 'age') {
+      av = a.DateCreated || a.Created || '';
+      bv = b.DateCreated || b.Created || '';
+    } else if(taskSortCol === 'ParentMission') {
+      av = a.ParentMissionLookupValue || a.ParentMission || '';
+      bv = b.ParentMissionLookupValue || b.ParentMission || '';
+    } else {
+      av = a[taskSortCol] || '';
+      bv = b[taskSortCol] || '';
+    }
+    return av < bv ? -taskSortDir : av > bv ? taskSortDir : 0;
+  });
+
+  const body = document.getElementById('taskPoolBody');
   if(!tasks.length) {
-    document.getElementById('taskPoolBody').innerHTML = `<div class="empty-state"><div class="empty-icon">✓</div><div class="empty-text">All Tasks Assigned</div></div>`;
+    body.innerHTML = `<div class="empty-state" style="padding:32px"><div class="empty-icon">✓</div><div class="empty-text">No tasks match this filter</div></div>`;
     return;
   }
-  document.getElementById('taskPoolBody').innerHTML = tasks.map((t,i)=>{
+
+  body.innerHTML = tasks.map((t,i) => {
     const age = t.DateCreated ? hoursSince(t.DateCreated) : (t.Created ? hoursSince(t.Created) : null);
-    // ParentMission is a Lookup — Graph returns ParentMissionLookupId and ParentMissionLookupValue
     const mName = t.ParentMissionLookupValue || t.ParentMission || '—';
     const parentMission = allMissions.find(m =>
       String(m.id) === String(t.ParentMissionLookupId) ||
       m.Title === t.ParentMissionLookupValue
     );
+    const assigned = t.AssignedToLookupValue || t.AssignedTo || '—';
     const tJson = JSON.stringify(t).replace(/"/g,'&quot;');
     const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
+    const statusCls = t.TaskStatus==='Completed'?'ts-completed':t.TaskStatus==='In Progress'?'ts-inprogress':t.PauseStatus==='Paused'?'ts-paused':'ts-unassigned';
     return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:pointer" onclick="event.stopPropagation();openTaskCard(${tJson},${mJson||'null'})">
       <div class="tn">${esc(t.Title||'—')}</div>
-      <div class="tm" style="color:var(--teal);font-weight:600">${esc(mName)}</div>
+      <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(mName)}</div>
       <div><span class="tt-badge">${esc(t.TaskType||'—')}</span></div>
-      <div style="font-size:11px;font-weight:600;color:var(--text-dim);">—</div>
+      <div><span class="ts-pill ${statusCls}">${esc(t.TaskStatus==='In Progress'?'In Progress':t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
+      <div class="ta-assigned" style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(assigned)}</div>
       <div class="ta${age!==null&&age>4?' urgent':''}">${age!==null?age+'h ago':'—'}</div>
     </div>`;
   }).join('');
@@ -1570,124 +1622,470 @@ function openTaskCard(t, parentMission) {
   renderTaskCard(t, parentMission);
 }
 
+// ═══════════════════════════════════════════════════════
+// WORKFLOW ENGINE — per task type
+// ═══════════════════════════════════════════════════════
+
+// New Lead: Action 1 Make Contact → Action 2 Onboarding → Action 3 Training (optional)
+const WF_NEW_LEAD = {
+  actions: [
+    { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
+      fields: ['contact_attempts','notes'],
+      outcomes: [
+        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Did Not Proceed', style: 'danger', result: 'close_fail', note: 'Closed — did not proceed' },
+        { label: 'Onboarded', style: 'success', result: 'close_success', note: 'Closed — success' },
+      ]
+    },
+    { num: 2, name: 'Onboarding', taskStatus: 'Onboarding',
+      fields: ['meeting_scheduled','notes'],
+      outcomes: [
+        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Did Not Proceed', style: 'danger', result: 'close_fail', note: 'Closed — did not proceed' },
+        { label: 'Onboarded', style: 'success', result: 'close_success', note: 'Closed — success' },
+      ]
+    },
+    { num: 3, name: 'Training', taskStatus: 'Training', optional: true,
+      fields: ['training_date','training_method','modules_completed','notes'],
+      outcomes: [
+        { label: 'Training Complete', style: 'success', result: 'close_success', note: 'Closed — success' },
+        { label: 'No Training', style: 'success', result: 'close_success', note: 'Closed — success (no training)' },
+        { label: 'Rescheduled', style: 'warning', result: 'stay', note: 'Training rescheduled' },
+      ]
+    }
+  ]
+};
+
+// Approved Contact: Action 1 Make Contact → branches
+const WF_APPROVED_CONTACT = {
+  actions: [
+    { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
+      fields: ['contact_attempts','notes'],
+      outcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+        { label: 'Will Bid Later', style: 'warning', result: 'next_2a', note: 'Will bid later — follow up created' },
+        { label: 'Needs Training', style: 'warning', result: 'next_2b', note: 'Needs training — training action created' },
+      ]
+    },
+    { num: '2A', name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true,
+      fields: ['followup_date','notes'],
+      outcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+      ]
+    },
+    { num: '2B', name: 'Training', taskStatus: 'Training', autocreated: true,
+      fields: ['training_date','training_method','notes'],
+      outcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+        { label: 'Will Bid Later', style: 'warning', result: 'next_3', note: 'Will bid later — final follow up created' },
+      ]
+    },
+    { num: 3, name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true, final: true,
+      fields: ['followup_date','notes'],
+      outcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+      ]
+    }
+  ]
+};
+
+// Generic: free-form actions, manual closure
+const WF_GENERIC = { free: true };
+
+function getWorkflow(taskType) {
+  if(taskType === 'New Lead') return WF_NEW_LEAD;
+  if(taskType === 'Approved Contact') return WF_APPROVED_CONTACT;
+  return WF_GENERIC;
+}
+
+function getCurrentAction(t, taskActions) {
+  // Find the highest-numbered incomplete action
+  if(!taskActions.length) return null;
+  const active = taskActions.filter(a => a.ActionStatus !== 'Completed');
+  if(active.length) return active[0];
+  return taskActions[taskActions.length - 1];
+}
+
+function actionFieldsHtml(fields, a) {
+  if(!fields || !fields.length) return '';
+  return fields.map(f => {
+    if(f === 'contact_attempts') return `
+      <div class="form-row"><label class="form-label">Contact Method</label>
+        <select class="form-input" id="af_method" onclick="event.stopPropagation()">
+          <option>Phone</option><option>Email</option><option>Text</option><option>In person</option>
+        </select>
+      </div>
+      <div class="form-row"><label class="form-label">Date / Time</label>
+        <input class="form-input" type="datetime-local" id="af_datetime" onclick="event.stopPropagation()" />
+      </div>`;
+    if(f === 'meeting_scheduled') return `
+      <div class="form-row"><label class="form-label">Meeting Date / Time</label>
+        <input class="form-input" type="datetime-local" id="af_meeting" onclick="event.stopPropagation()" />
+      </div>`;
+    if(f === 'followup_date') return `
+      <div class="form-row"><label class="form-label">Follow-up Date</label>
+        <input class="form-input" type="datetime-local" id="af_followup" onclick="event.stopPropagation()" />
+      </div>`;
+    if(f === 'training_date') return `
+      <div class="form-row"><label class="form-label">Training Date / Time</label>
+        <input class="form-input" type="datetime-local" id="af_training_date" onclick="event.stopPropagation()" />
+      </div>`;
+    if(f === 'training_method') return `
+      <div class="form-row"><label class="form-label">Training Method</label>
+        <select class="form-input" id="af_training_method" onclick="event.stopPropagation()">
+          <option>In person</option><option>Virtual</option><option>Self-serve</option>
+        </select>
+      </div>`;
+    if(f === 'modules_completed') return `
+      <div class="form-row"><label class="form-label">Modules Completed</label>
+        <input class="form-input" id="af_modules" placeholder="e.g. Onboarding, Compliance" onclick="event.stopPropagation()" />
+      </div>`;
+    if(f === 'notes') return `
+      <div class="form-row"><label class="form-label">Notes <span style="color:var(--red)">*</span></label>
+        <textarea class="form-input" id="af_notes" rows="2" style="resize:vertical" placeholder="Required — outcome, context, or next steps..." onclick="event.stopPropagation()"></textarea>
+      </div>`;
+    return '';
+  }).join('');
+}
+
+function outcomeButtonsHtml(outcomes) {
+  return outcomes.map(o => {
+    const cls = o.style === 'danger' ? 'action-btn danger' : o.style === 'success' ? 'action-btn success-btn' : 'action-btn warning';
+    return `<button class="${cls}" onclick="event.stopPropagation();recordOutcome('${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
+  }).join('');
+}
+
 function renderTaskCard(t, parentMission) {
   const taskActions = allActions.filter(a => String(a.ParentTaskLookupId) === String(t.id) || String(a.ParentTask) === String(t.id));
   const assigned = t.AssignedToLookupValue || t.AssignedTo || '';
+  const wf = getWorkflow(t.TaskType);
+  const mName = t.ParentMissionLookupValue || t.ParentMission || '—';
+  const isBulk = t.TaskType === 'Bulk Leads';
+  const isGeneric = t.TaskType === 'Generic';
+  const isTyped = !isGeneric && !isBulk;
 
-  document.getElementById('tcStripe').className = 'mp-stripe s-p3';
+  // Header
+  document.getElementById('tcStripe').className = `mp-stripe s-${t.TaskType==='Approved Contact'?'p1':t.TaskType==='New Lead'?'p2':'p3'}`;
   document.getElementById('tcTitle').textContent = t.Title || '—';
   document.getElementById('tcBadges').innerHTML = `
-    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
+    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'Unassigned')}</span>
     <span class="spill" style="background:rgba(74,158,255,0.1);color:var(--blue);border:1px solid rgba(74,158,255,0.2)">${esc(t.TaskType||'—')}</span>
     ${t.PauseStatus==='Paused'?'<span class="spill sp-hold">⏸ Paused</span>':''}
+    <span style="font-size:10px;color:var(--text-muted);padding:2px 6px">Mission: <strong style="color:var(--teal)">${esc(mName)}</strong></span>
   `;
 
+  // Top buttons
+  const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
   document.getElementById('tcActions').innerHTML = `
-    <button class="action-btn primary" onclick="event.stopPropagation();tcSave()">💾 Save Changes</button>
-    <button class="action-btn" onclick="event.stopPropagation();openAddAction()">＋ Add Action</button>
-    ${parentMission ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${JSON.stringify(parentMission).replace(/"/g,'&quot;')})">↗ Mission</button>` : ''}
+    ${t.PauseStatus==='Paused'
+      ? `<button class="action-btn primary" onclick="event.stopPropagation();tcResume()">▶ Resume Task</button>`
+      : `<button class="action-btn warning" onclick="event.stopPropagation();tcPause()">⏸ Pause Task</button>`
+    }
+    ${mJson ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${mJson})">↗ Mission</button>` : ''}
   `;
 
-  const isBulk = t.TaskType === 'Bulk Leads';
-
-  document.getElementById('tcBody').innerHTML = `
+  // ── ASSIGN TO section (always shown) ──
+  const assignSection = `
     <div class="mp-section">
-      <div class="mp-sec-label">Details</div>
-      <div class="mp-fields">
-        <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
-        <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal)">${esc(t.ParentMissionLookupValue||'—')}</div></div>
-        <div><div class="mp-field-lbl">Created</div><div class="mp-field-val mono">${t.DateCreated ? new Date(t.DateCreated).toLocaleDateString() : '—'}</div></div>
-        <div><div class="mp-field-lbl">Completed</div><div class="mp-field-val mono">${t.DateCompleted ? new Date(t.DateCompleted).toLocaleDateString() : '—'}</div></div>
-      </div>
-    </div>
-
-    <div class="mp-section">
-      <div class="mp-sec-label">Status &amp; Assignment</div>
-      <div class="te-row"><label class="te-label">Status</label>
-        <select class="form-select" id="tcStatusSel" onclick="event.stopPropagation()">
-          <option ${t.TaskStatus==='Unassigned'?'selected':''}>Unassigned</option>
-          <option ${t.TaskStatus==='In Progress'?'selected':''}>In Progress</option>
-          <option ${t.TaskStatus==='Paused'?'selected':''}>Paused</option>
-          <option ${t.TaskStatus==='Completed'?'selected':''}>Completed</option>
+      <div class="mp-sec-label">Assignment</div>
+      <div class="te-row">
+        <label class="te-label">Assigned To</label>
+        <select class="form-select" id="tcAssignSel" onclick="event.stopPropagation()" onchange="event.stopPropagation();tcAssignChange(this.value)">
+          <option value="">— Unassigned —</option>
+          ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(m.email===assigned||m.name===assigned)?'selected':''}>${esc(m.name)}</option>`).join('')}
         </select>
       </div>
-      <div class="te-row" id="pauseReasonRow" style="${t.TaskStatus==='Paused'?'':'display:none'}"><label class="te-label">Pause Reason</label>
-        <select class="form-select" id="tcPauseSel" onclick="event.stopPropagation()">
-          <option value="">—</option>
-          ${['Awaiting callback','Awaiting information','Scheduled','Responder unavailable','Lead unresponsive','Blocked external','Mission on hold','Other'].map(r=>`<option ${t.PauseReason===r?'selected':''}>${r}</option>`).join('')}
-        </select>
-      </div>
-      <div class="te-row"><label class="te-label">Assigned To</label>
-        ${memberSelectHtml(assigned)}
-      </div>
-    </div>
+    </div>`;
 
-    ${isBulk ? `
-    <div class="mp-section" id="bulkLeadsSection">
+  // ── BULK LEADS section ──
+  const bulkSection = isBulk ? `
+    <div class="mp-section">
       <div class="mp-sec-label">Bulk Lead Upload</div>
-      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Upload a spreadsheet (.xlsx or .csv) — one row per lead. Required columns: <strong>Title</strong> (lead name). Optional: <strong>Notes</strong>.</div>
-      <div class="bulk-drop-zone" id="bulkDropZone" onclick="event.stopPropagation();document.getElementById('bulkFileInput').click()">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">
+        Upload a .csv file — Required columns: <strong>Lead name, Business type, Contact name, Phone, Email</strong>. Optional: Notes.
+      </div>
+      <div class="bulk-drop-zone" onclick="event.stopPropagation();document.getElementById('bulkFileInput').click()">
         <div style="font-size:24px;margin-bottom:6px">📂</div>
-        <div style="font-size:12px;font-weight:600;color:var(--teal)">Click to upload spreadsheet</div>
-        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">.xlsx or .csv</div>
+        <div style="font-size:12px;font-weight:600;color:var(--teal)">Click to upload .csv spreadsheet</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Each valid row creates one New Lead task</div>
       </div>
       <input type="file" id="bulkFileInput" accept=".xlsx,.csv" style="display:none" onchange="event.stopPropagation();handleBulkFile(event)" />
       <div id="bulkPreview" style="margin-top:10px"></div>
-      <button class="action-btn primary" id="bulkCreateBtn" style="display:none;margin-top:8px;width:100%" onclick="event.stopPropagation();createBulkLeads()">✓ Create Lead Tasks</button>
-    </div>` : ''}
+      <button class="action-btn primary" id="bulkCreateBtn" style="display:none;margin-top:8px;width:100%" onclick="event.stopPropagation();createBulkLeads()">✓ Load Valid Tasks</button>
+    </div>` : '';
 
-    <div class="mp-section">
-      <div class="mp-sec-label">Notes</div>
-      <textarea class="form-input" id="tcNotesInput" rows="3" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Add notes...">${esc(t.Notes||'')}</textarea>
-    </div>
-
-    <div class="mp-section">
-      <div class="mp-sec-label">Actions (${taskActions.length}) <span onclick="event.stopPropagation();openAddAction()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;margin-left:8px">＋ Add Action</span></div>
-      <div id="addActionForm" class="add-task-form" style="display:none">
-        <div class="form-row"><label class="form-label">Action Title</label><input class="form-input" id="newActionTitle" placeholder="Describe the action..." onclick="event.stopPropagation()" /></div>
-        <div class="form-row"><label class="form-label">Action Type</label><input class="form-input" id="newActionType" placeholder="e.g. Phone call, Email, Research..." onclick="event.stopPropagation()" /></div>
-        <div class="form-row"><label class="form-label">Assigned To</label>${memberSelectHtml('')}</div>
-        <div class="form-btns">
-          <button class="btn-save" onclick="event.stopPropagation();saveNewAction()">Save Action</button>
-          <button class="btn-cancel" onclick="event.stopPropagation();closeAddAction()">Cancel</button>
+  // ── TYPED WORKFLOW actions ──
+  let actionsSection = '';
+  if(isTyped && wf.actions) {
+    const actionItems = taskActions.map((a, ai) => {
+      const statusCls = (a.ActionStatus||'').toLowerCase().replace(/\s/g,'');
+      return `<div class="task-item" style="cursor:pointer" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')">
+        <div class="ti-left">
+          <div class="ti-name">${esc(a.Title||'—')}</div>
+          <div class="ti-meta">${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')} ${a.Notes?'· '+esc(a.Notes.substring(0,40)):''}</div>
         </div>
+        <span class="ts-pill ts-${statusCls}">${esc(a.ActionStatus||'—')}</span>
       </div>
-      <div id="actionList">
-        ${taskActions.length ? taskActions.map((a,ai)=>`
-          <div class="task-item" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')" style="cursor:pointer">
-            <div class="ti-left">
-              <div class="ti-name">${esc(a.Title||'—')}</div>
-              <div class="ti-meta">${esc(a.ActionType||'')} · ${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')}</div>
-            </div>
-            <span class="ts-pill ts-${(a.ActionStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(a.ActionStatus||'—')}</span>
+      <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
+        <div class="te-row"><label class="te-label">Assigned</label>${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}</div>
+        <div class="te-row"><label class="te-label">Notes</label><input class="form-input" value="${esc(a.Notes||'')}" placeholder="Notes..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" /></div>
+      </div>`;
+    }).join('');
+
+    // Find current action template from workflow
+    const nextActionNum = taskActions.length + 1;
+    const wfAction = wf.actions.find(wa => wa.num === nextActionNum || String(wa.num) === String(nextActionNum));
+
+    const currentActionHtml = wfAction && t.TaskStatus !== 'Completed' ? `
+      <div class="mp-section" style="border:1px solid var(--border-hi);border-radius:var(--radius-md);padding:0;overflow:hidden">
+        <div style="background:var(--teal-soft);padding:10px 14px;border-bottom:1px solid var(--border)">
+          <div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">
+            Action ${wfAction.num}${wfAction.autocreated?' · Auto-created':''} ${wfAction.optional?'· Optional':''}
           </div>
-          <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
-            <div class="te-row"><label class="te-label">Status</label>
-              <select class="form-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'ActionStatus',this.value)">
-                <option ${a.ActionStatus==='Unassigned'?'selected':''}>Unassigned</option>
-                <option ${a.ActionStatus==='In Progress'?'selected':''}>In Progress</option>
-                <option ${a.ActionStatus==='Paused'?'selected':''}>Paused</option>
-                <option ${a.ActionStatus==='Completed'?'selected':''}>Completed</option>
-              </select>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${esc(wfAction.name)}</div>
+        </div>
+        <div style="padding:12px 14px">
+          ${actionFieldsHtml(wfAction.fields, null)}
+          <div class="form-row">
+            <label class="form-label">Notation <span style="color:var(--red)">*</span> <span style="font-size:9px;color:var(--text-muted)">(required to submit)</span></label>
+            <textarea class="form-input" id="af_notes" rows="2" style="resize:vertical" placeholder="Outcome, context, or next steps — required..." onclick="event.stopPropagation()"></textarea>
+          </div>
+          <div style="margin-top:12px">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Record Outcome</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${outcomeButtonsHtml(wfAction.outcomes)}
             </div>
-            <div class="te-row"><label class="te-label">Assigned</label>
-              ${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}
-            </div>
-            <div class="te-row"><label class="te-label">Notes</label>
-              <input class="form-input" value="${esc(a.Notes||'')}" placeholder="Notes..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" />
-            </div>
-          </div>`).join('') : '<div style="padding:12px 0;font-size:11px;color:var(--text-muted);">No actions yet.</div>'}
+          </div>
+        </div>
+      </div>` : (t.TaskStatus === 'Completed' ? '' : `
+      <div class="mp-section" style="text-align:center;padding:16px;color:var(--text-muted);font-size:11px">
+        No more actions in this workflow — task is pending closure.
+      </div>`);
+
+    actionsSection = `
+      <div class="mp-section">
+        <div class="mp-sec-label">Action History (${taskActions.length})</div>
+        ${taskActions.length ? `<div id="actionList">${actionItems}</div>` : '<div style="padding:8px 0;font-size:11px;color:var(--text-muted)">No actions recorded yet.</div>'}
       </div>
+      ${currentActionHtml}`;
+  }
+
+  // ── GENERIC free-form actions ──
+  let genericSection = '';
+  if(isGeneric) {
+    const actionItems = taskActions.map((a, ai) => {
+      const statusCls = (a.ActionStatus||'').toLowerCase().replace(/\s/g,'');
+      return `<div class="task-item" style="cursor:pointer" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')">
+        <div class="ti-left">
+          <div class="ti-name">${esc(a.Title||'—')}</div>
+          <div class="ti-meta">${esc(a.ActionType||'')} · ${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')}</div>
+        </div>
+        <span class="ts-pill ts-${statusCls}">${esc(a.ActionStatus||'—')}</span>
+      </div>
+      <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
+        <div class="te-row"><label class="te-label">Status</label>
+          <select class="form-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'ActionStatus',this.value)">
+            <option ${a.ActionStatus==='Unassigned'?'selected':''}>Unassigned</option>
+            <option ${a.ActionStatus==='In Progress'?'selected':''}>In Progress</option>
+            <option ${a.ActionStatus==='Completed'?'selected':''}>Completed</option>
+          </select>
+        </div>
+        <div class="te-row"><label class="te-label">Assigned</label>${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}</div>
+        <div class="te-row"><label class="te-label">Notes <span style="color:var(--red)">*</span></label>
+          <input class="form-input" value="${esc(a.Notes||'')}" placeholder="Required notation..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" />
+        </div>
+      </div>`;
+    }).join('');
+
+    genericSection = `
+      <div class="mp-section">
+        <div class="mp-sec-label">Actions (${taskActions.length}) <span onclick="event.stopPropagation();openAddAction()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;margin-left:8px">＋ Add Action</span></div>
+        <div id="addActionForm" class="add-task-form" style="display:none">
+          <div class="form-row"><label class="form-label">Action Name</label><input class="form-input" id="newActionTitle" placeholder="What needs to be done..." onclick="event.stopPropagation()" /></div>
+          <div class="form-row"><label class="form-label">Action Type</label><input class="form-input" id="newActionType" placeholder="e.g. Phone call, Email, Meeting..." onclick="event.stopPropagation()" /></div>
+          <div class="form-row"><label class="form-label">Assigned To</label>${memberSelectHtml('')}</div>
+          <div class="form-btns">
+            <button class="btn-save" onclick="event.stopPropagation();saveNewAction()">Save Action</button>
+            <button class="btn-cancel" onclick="event.stopPropagation();closeAddAction()">Cancel</button>
+          </div>
+        </div>
+        <div id="actionList">${actionItems || '<div style="padding:8px 0;font-size:11px;color:var(--text-muted)">No actions yet.</div>'}</div>
+      </div>
+      <div class="mp-section">
+        <div class="mp-sec-label">Notation <span style="color:var(--red)">*</span> <span style="font-size:9px;color:var(--text-muted)">(required on status change)</span></div>
+        <textarea class="form-input" id="tcNotesInput" rows="3" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Notes, outcome, or context...">${esc(t.Notes||'')}</textarea>
+      </div>
+      <div class="mp-section" style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="action-btn success-btn" onclick="event.stopPropagation();tcComplete()">✓ Mark Complete</button>
+        <button class="action-btn danger" onclick="event.stopPropagation();tcNotCompleted()">✗ Not Completed</button>
+      </div>`;
+  }
+
+  document.getElementById('tcBody').innerHTML = `
+    ${assignSection}
+    ${bulkSection}
+    ${actionsSection}
+    ${genericSection}
+    <div class="mp-section">
+      <div class="mp-sec-label">Task Notes</div>
+      <textarea class="form-input" id="tcTaskNotes" rows="2" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Ongoing task-level notes...">${esc(t.Notes||'')}</textarea>
+      <button class="action-btn" style="margin-top:6px" onclick="event.stopPropagation();tcSaveNotes()">Save Notes</button>
     </div>
   `;
 
-  // Show/hide pause reason when status changes
-  document.getElementById('tcStatusSel').addEventListener('change', function() {
-    document.getElementById('pauseReasonRow').style.display = this.value === 'Paused' ? '' : 'none';
-  });
-
   document.getElementById('taskCardOverlay').dataset.taskId = t.id;
+  document.getElementById('taskCardOverlay').dataset.taskType = t.TaskType || '';
+  document.getElementById('taskCardOverlay').dataset.missionId = t.ParentMissionLookupId || '';
   document.getElementById('taskCardOverlay').classList.remove('hidden');
+}
+
+// ── Outcome handler ──
+async function recordOutcome(result, label, note) {
+  const notes = (document.getElementById('af_notes')?.value||'').trim();
+  if(!notes) { showToast('Notation is required before recording an outcome','error'); document.getElementById('af_notes')?.focus(); return; }
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  const missionId = document.getElementById('taskCardOverlay').dataset.missionId;
+  const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  // Log the action to Actions list
+  const actionNum = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length + 1;
+  try {
+    await createListItem('Actions', {
+      Title: `Action ${actionNum} — ${label}`,
+      ActionStatus: 'Completed',
+      PauseStatus: 'Active',
+      Notes: `[${timestamp}] ${notes}`,
+      ParentTaskLookupId: parseInt(taskId),
+    });
+  } catch(e) { console.warn('Action log failed:', e); }
+
+  if(result === 'close_success') {
+    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: note });
+    showToast('Task closed — success ✓','success');
+    closeTaskCard();
+  } else if(result === 'close_fail') {
+    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: note });
+    showToast('Task closed — '+label,'success');
+    closeTaskCard();
+  } else if(result === 'stay') {
+    await updateListItem('Tasks', taskId, { Notes: note });
+    showToast('Outcome recorded — task remains open','success');
+    closeTaskCard();
+  } else if(result === 'next_2a' || result === 'next_2b' || result === 'next_3') {
+    // Auto-create next action placeholder
+    const nextName = result==='next_2a'?'Action 2A — Log Bid Outcome':result==='next_2b'?'Action 2B — Training':'Action 3 — Log Bid Outcome';
+    await createListItem('Actions', {
+      Title: nextName,
+      ActionStatus: 'Unassigned',
+      PauseStatus: 'Active',
+      Notes: '',
+      ParentTaskLookupId: parseInt(taskId),
+    });
+    await updateListItem('Tasks', taskId, { Notes: note });
+    showToast(nextName+' created','success');
+    closeTaskCard();
+  }
+  await loadData();
+}
+
+// ── Pause/Resume ──
+async function tcPause() {
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  // Show inline pause form
+  const body = document.getElementById('tcBody');
+  const existing = document.getElementById('pauseInlineForm');
+  if(existing) { existing.remove(); return; }
+  const form = document.createElement('div');
+  form.id = 'pauseInlineForm';
+  form.className = 'mp-section';
+  form.style.cssText = 'border:1px solid var(--amber);border-radius:var(--radius-md);padding:14px;margin-bottom:0';
+  form.innerHTML = `
+    <div class="mp-sec-label" style="color:var(--amber)">⏸ Pause Task</div>
+    <div class="form-row"><label class="form-label">Reason Code <span style="color:var(--red)">*</span></label>
+      <select class="form-input" id="pauseReasonSel" onclick="event.stopPropagation()">
+        <option value="">— Select reason —</option>
+        ${['Awaiting callback','Awaiting information','Scheduled — pending date','Responder unavailable','Lead unresponsive','Blocked — external','Mission on hold','Other'].map(r=>`<option>${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-row"><label class="form-label">Pause Note (optional)</label>
+      <input class="form-input" id="pauseNote" placeholder="Additional context..." onclick="event.stopPropagation()" />
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="action-btn warning" onclick="event.stopPropagation();submitPause(${taskId})">Confirm Pause</button>
+      <button class="action-btn" onclick="event.stopPropagation();document.getElementById('pauseInlineForm').remove()">Cancel</button>
+    </div>`;
+  body.prepend(form);
+}
+
+async function submitPause(taskId) {
+  const reason = document.getElementById('pauseReasonSel')?.value;
+  const note = document.getElementById('pauseNote')?.value||'';
+  if(!reason) { showToast('Please select a pause reason','error'); return; }
+  try {
+    await updateListItem('Tasks', taskId, { PauseStatus: 'Paused', PauseReason: reason, Notes: note||undefined });
+    showToast('Task paused','success');
+    closeTaskCard();
+    await loadData();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function tcResume() {
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  try {
+    await updateListItem('Tasks', taskId, { PauseStatus: 'Active', PauseReason: '' });
+    showToast('Task resumed','success');
+    closeTaskCard();
+    await loadData();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+// ── Generic complete/not completed ──
+async function tcComplete() {
+  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
+  if(!notes) { showToast('Notation required to close task','error'); document.getElementById('tcNotesInput')?.focus(); return; }
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  try {
+    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: notes });
+    showToast('Task completed ✓','success');
+    closeTaskCard();
+    await loadData();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+async function tcNotCompleted() {
+  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
+  if(!notes) { showToast('Notation required','error'); document.getElementById('tcNotesInput')?.focus(); return; }
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  try {
+    await updateListItem('Tasks', taskId, { TaskStatus: 'Completed', Notes: 'Not completed: '+notes });
+    showToast('Task marked not completed','success');
+    closeTaskCard();
+    await loadData();
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+// ── Assign change → auto In Progress ──
+async function tcAssignChange(email) {
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  if(!email) return;
+  try {
+    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
+    showToast('Assigned — status set to In Progress','success');
+    await loadData();
+  } catch(e) { console.warn('Status update failed',e); }
+}
+
+async function tcSaveNotes() {
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  const notes = (document.getElementById('tcTaskNotes')?.value||'').trim();
+  try {
+    await updateListItem('Tasks', taskId, { Notes: notes });
+    showToast('Notes saved','success');
+  } catch(e) { showToast(e.message,'error'); }
 }
 
 // ── Bulk Leads ──
@@ -1710,26 +2108,63 @@ function handleBulkFile(event) {
 
 function parseBulkCSV(text) {
   const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
-  const titleIdx = headers.indexOf('title');
-  const notesIdx = headers.indexOf('notes');
-  if (titleIdx === -1) {
-    document.getElementById('bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--red)">✗ No "Title" column found. Please add a Title column.</div>';
+  const raw_headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
+  // Map flexible column names
+  const colMap = {};
+  raw_headers.forEach((h,i) => {
+    if(h.includes('lead name')||h==='lead'||h==='name'||h==='title') colMap.leadName = i;
+    if(h.includes('business')||h.includes('type')) colMap.bizType = i;
+    if(h.includes('contact')) colMap.contact = i;
+    if(h.includes('phone')) colMap.phone = i;
+    if(h.includes('email')) colMap.email = i;
+    if(h==='notes'||h.includes('note')) colMap.notes = i;
+  });
+
+  if(colMap.leadName === undefined) {
+    document.getElementById('bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--red)">✗ No lead name column found. Expected: "Lead name", "Name", or "Title".</div>';
     return;
   }
-  bulkLeadRows = lines.slice(1).map(l => {
+
+  const allRows = lines.slice(1).filter(l=>l.trim()).map(l => {
     const cols = l.split(',').map(c => c.trim().replace(/^"|"$/g,''));
-    return { title: cols[titleIdx]||'', notes: notesIdx>=0 ? (cols[notesIdx]||'') : '' };
-  }).filter(r => r.title);
+    const name = colMap.leadName!==undefined ? cols[colMap.leadName]||'' : '';
+    return {
+      leadName: name,
+      bizType: colMap.bizType!==undefined ? cols[colMap.bizType]||'' : '',
+      contact: colMap.contact!==undefined ? cols[colMap.contact]||'' : '',
+      phone: colMap.phone!==undefined ? cols[colMap.phone]||'' : '',
+      email: colMap.email!==undefined ? cols[colMap.email]||'' : '',
+      notes: colMap.notes!==undefined ? cols[colMap.notes]||'' : '',
+      valid: !!name,
+    };
+  });
+
+  bulkLeadRows = allRows;
+  const valid = allRows.filter(r=>r.valid);
+  const flagged = allRows.filter(r=>!r.valid);
 
   const preview = document.getElementById('bulkPreview');
   preview.innerHTML = `
-    <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:8px">✓ ${bulkLeadRows.length} leads ready to create:</div>
-    <div style="max-height:120px;overflow-y:auto;background:var(--navy);border-radius:8px;padding:8px">
-      ${bulkLeadRows.map((r,i) => `<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--text)">${i+1}. ${esc(r.title)}</div>`).join('')}
+    <div style="font-size:11px;font-weight:700;color:var(--teal);margin-bottom:8px">
+      ${allRows.length} rows · ${valid.length} valid · ${flagged.length} flagged
     </div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 100px 100px 110px 80px;gap:8px;padding:6px 10px;background:var(--navy-light);font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase">
+        <div>Lead Name</div><div>Business Type</div><div>Contact</div><div>Phone</div><div>Status</div>
+      </div>
+      ${allRows.map(r=>`
+        <div style="display:grid;grid-template-columns:1fr 100px 100px 110px 80px;gap:8px;padding:6px 10px;border-top:1px solid var(--border);font-size:11px;background:${r.valid?'':'rgba(232,69,60,0.06)'}">
+          <div style="color:${r.valid?'var(--text)':'var(--red)'}${r.valid?'':';font-style:italic'}">${esc(r.leadName||'[missing]')}</div>
+          <div style="color:var(--text-dim)">${esc(r.bizType)}</div>
+          <div style="color:var(--text-dim)">${esc(r.contact)}</div>
+          <div style="color:var(--text-dim)">${esc(r.phone)}</div>
+          <div><span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:${r.valid?'rgba(56,201,100,0.15)':'rgba(232,69,60,0.15)'};color:${r.valid?'#38c964':'var(--red)'}">${r.valid?'Valid':'Missing name'}</span></div>
+        </div>`).join('')}
+    </div>
+    ${flagged.length?`<div style="font-size:10px;color:var(--text-muted)">${flagged.length} flagged row${flagged.length>1?'s':''} will be skipped.</div>`:''}
   `;
-  document.getElementById('bulkCreateBtn').style.display = '';
+  if(valid.length > 0) document.getElementById('bulkCreateBtn').style.display = '';
+  document.getElementById('bulkCreateBtn').textContent = `✓ Load ${valid.length} valid task${valid.length>1?'s':''}`;
 }
 
 async function createBulkLeads() {
@@ -1738,19 +2173,26 @@ async function createBulkLeads() {
   btn.disabled = true;
   btn.textContent = 'Creating...';
   let created = 0;
-  for (const row of bulkLeadRows) {
+  const validRows = bulkLeadRows.filter(r=>r.valid);
+  for (const row of validRows) {
+    const notesParts = [];
+    if(row.bizType) notesParts.push('Business type: '+row.bizType);
+    if(row.contact) notesParts.push('Contact: '+row.contact);
+    if(row.phone) notesParts.push('Phone: '+row.phone);
+    if(row.email) notesParts.push('Email: '+row.email);
+    if(row.notes) notesParts.push(row.notes);
     try {
       await createListItem('Tasks', {
-        Title: row.title,
+        Title: row.leadName,
         TaskType: 'New Lead',
         TaskStatus: 'Unassigned',
         PauseStatus: 'Active',
         ClosingTask: false,
         ParentMissionLookupId: currentTask.ParentMissionLookupId,
-        Notes: row.notes
+        Notes: notesParts.join(' | ')
       });
       created++;
-    } catch(e) { console.warn('Failed to create lead:', row.title, e); }
+    } catch(e) { console.warn('Failed to create lead:', row.leadName, e); }
   }
   showToast(`${created} lead tasks created`, 'success');
   bulkLeadRows = [];
