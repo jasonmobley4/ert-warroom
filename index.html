@@ -721,6 +721,16 @@ body::after {
 
 .ts-pill { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
 .task-item { cursor: pointer; }
+.bulk-drop-zone {
+  border: 2px dashed var(--border-hi);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bulk-drop-zone:hover { background: var(--teal-soft); border-color: var(--teal); }
+#addActionForm { padding: 12px; background: var(--navy-light); border-radius: var(--radius-sm); margin-bottom: 8px; }
 .task-expand { background: var(--navy-light); border-radius: 0 0 var(--radius-sm) var(--radius-sm); padding: 12px 14px; margin-top: -6px; margin-bottom: 8px; border: 1px solid var(--border); border-top: none; }
 .task-expand.hidden { display: none; }
 .te-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -1557,36 +1567,275 @@ function openTaskCard(t, parentMission) {
     </div>
   `;
 
-  // Store task id for save
+  renderTaskCard(t, parentMission);
+}
+
+function renderTaskCard(t, parentMission) {
+  const taskActions = allActions.filter(a => String(a.ParentTaskLookupId) === String(t.id) || String(a.ParentTask) === String(t.id));
+  const assigned = t.AssignedToLookupValue || t.AssignedTo || '';
+
+  document.getElementById('tcStripe').className = 'mp-stripe s-p3';
+  document.getElementById('tcTitle').textContent = t.Title || '—';
+  document.getElementById('tcBadges').innerHTML = `
+    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
+    <span class="spill" style="background:rgba(74,158,255,0.1);color:var(--blue);border:1px solid rgba(74,158,255,0.2)">${esc(t.TaskType||'—')}</span>
+    ${t.PauseStatus==='Paused'?'<span class="spill sp-hold">⏸ Paused</span>':''}
+  `;
+
+  document.getElementById('tcActions').innerHTML = `
+    <button class="action-btn primary" onclick="event.stopPropagation();tcSave()">💾 Save Changes</button>
+    <button class="action-btn" onclick="event.stopPropagation();openAddAction()">＋ Add Action</button>
+    ${parentMission ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${JSON.stringify(parentMission).replace(/"/g,'&quot;')})">↗ Mission</button>` : ''}
+  `;
+
+  const isBulk = t.TaskType === 'Bulk Leads';
+
+  document.getElementById('tcBody').innerHTML = `
+    <div class="mp-section">
+      <div class="mp-sec-label">Details</div>
+      <div class="mp-fields">
+        <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
+        <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal)">${esc(t.ParentMissionLookupValue||'—')}</div></div>
+        <div><div class="mp-field-lbl">Created</div><div class="mp-field-val mono">${t.DateCreated ? new Date(t.DateCreated).toLocaleDateString() : '—'}</div></div>
+        <div><div class="mp-field-lbl">Completed</div><div class="mp-field-val mono">${t.DateCompleted ? new Date(t.DateCompleted).toLocaleDateString() : '—'}</div></div>
+      </div>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-sec-label">Status &amp; Assignment</div>
+      <div class="te-row"><label class="te-label">Status</label>
+        <select class="form-select" id="tcStatusSel" onclick="event.stopPropagation()">
+          <option ${t.TaskStatus==='Unassigned'?'selected':''}>Unassigned</option>
+          <option ${t.TaskStatus==='In Progress'?'selected':''}>In Progress</option>
+          <option ${t.TaskStatus==='Paused'?'selected':''}>Paused</option>
+          <option ${t.TaskStatus==='Completed'?'selected':''}>Completed</option>
+        </select>
+      </div>
+      <div class="te-row" id="pauseReasonRow" style="${t.TaskStatus==='Paused'?'':'display:none'}"><label class="te-label">Pause Reason</label>
+        <select class="form-select" id="tcPauseSel" onclick="event.stopPropagation()">
+          <option value="">—</option>
+          ${['Awaiting callback','Awaiting information','Scheduled','Responder unavailable','Lead unresponsive','Blocked external','Mission on hold','Other'].map(r=>`<option ${t.PauseReason===r?'selected':''}>${r}</option>`).join('')}
+        </select>
+      </div>
+      <div class="te-row"><label class="te-label">Assigned To</label>
+        ${memberSelectHtml(assigned)}
+      </div>
+    </div>
+
+    ${isBulk ? `
+    <div class="mp-section" id="bulkLeadsSection">
+      <div class="mp-sec-label">Bulk Lead Upload</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:10px">Upload a spreadsheet (.xlsx or .csv) — one row per lead. Required columns: <strong>Title</strong> (lead name). Optional: <strong>Notes</strong>.</div>
+      <div class="bulk-drop-zone" id="bulkDropZone" onclick="event.stopPropagation();document.getElementById('bulkFileInput').click()">
+        <div style="font-size:24px;margin-bottom:6px">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--teal)">Click to upload spreadsheet</div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">.xlsx or .csv</div>
+      </div>
+      <input type="file" id="bulkFileInput" accept=".xlsx,.csv" style="display:none" onchange="event.stopPropagation();handleBulkFile(event)" />
+      <div id="bulkPreview" style="margin-top:10px"></div>
+      <button class="action-btn primary" id="bulkCreateBtn" style="display:none;margin-top:8px;width:100%" onclick="event.stopPropagation();createBulkLeads()">✓ Create Lead Tasks</button>
+    </div>` : ''}
+
+    <div class="mp-section">
+      <div class="mp-sec-label">Notes</div>
+      <textarea class="form-input" id="tcNotesInput" rows="3" style="resize:vertical;width:100%;font-family:inherit" onclick="event.stopPropagation()" placeholder="Add notes...">${esc(t.Notes||'')}</textarea>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-sec-label">Actions (${taskActions.length}) <span onclick="event.stopPropagation();openAddAction()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;margin-left:8px">＋ Add Action</span></div>
+      <div id="addActionForm" class="add-task-form" style="display:none">
+        <div class="form-row"><label class="form-label">Action Title</label><input class="form-input" id="newActionTitle" placeholder="Describe the action..." onclick="event.stopPropagation()" /></div>
+        <div class="form-row"><label class="form-label">Action Type</label><input class="form-input" id="newActionType" placeholder="e.g. Phone call, Email, Research..." onclick="event.stopPropagation()" /></div>
+        <div class="form-row"><label class="form-label">Assigned To</label>${memberSelectHtml('')}</div>
+        <div class="form-btns">
+          <button class="btn-save" onclick="event.stopPropagation();saveNewAction()">Save Action</button>
+          <button class="btn-cancel" onclick="event.stopPropagation();closeAddAction()">Cancel</button>
+        </div>
+      </div>
+      <div id="actionList">
+        ${taskActions.length ? taskActions.map((a,ai)=>`
+          <div class="task-item" onclick="event.stopPropagation();toggleActionExpand(event,'act-exp-${ai}')" style="cursor:pointer">
+            <div class="ti-left">
+              <div class="ti-name">${esc(a.Title||'—')}</div>
+              <div class="ti-meta">${esc(a.ActionType||'')} · ${esc(a.AssignedToLookupValue||a.AssignedTo||'Unassigned')}</div>
+            </div>
+            <span class="ts-pill ts-${(a.ActionStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(a.ActionStatus||'—')}</span>
+          </div>
+          <div class="task-expand hidden" id="act-exp-${ai}" onclick="event.stopPropagation()">
+            <div class="te-row"><label class="te-label">Status</label>
+              <select class="form-select" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'ActionStatus',this.value)">
+                <option ${a.ActionStatus==='Unassigned'?'selected':''}>Unassigned</option>
+                <option ${a.ActionStatus==='In Progress'?'selected':''}>In Progress</option>
+                <option ${a.ActionStatus==='Paused'?'selected':''}>Paused</option>
+                <option ${a.ActionStatus==='Completed'?'selected':''}>Completed</option>
+              </select>
+            </div>
+            <div class="te-row"><label class="te-label">Assigned</label>
+              ${memberSelectHtml(a.AssignedToLookupValue||a.AssignedTo||'')}
+            </div>
+            <div class="te-row"><label class="te-label">Notes</label>
+              <input class="form-input" value="${esc(a.Notes||'')}" placeholder="Notes..." onclick="event.stopPropagation()" onchange="event.stopPropagation();updateActionField(${a.id},'Notes',this.value)" />
+            </div>
+          </div>`).join('') : '<div style="padding:12px 0;font-size:11px;color:var(--text-muted);">No actions yet.</div>'}
+      </div>
+    </div>
+  `;
+
+  // Show/hide pause reason when status changes
+  document.getElementById('tcStatusSel').addEventListener('change', function() {
+    document.getElementById('pauseReasonRow').style.display = this.value === 'Paused' ? '' : 'none';
+  });
+
   document.getElementById('taskCardOverlay').dataset.taskId = t.id;
   document.getElementById('taskCardOverlay').classList.remove('hidden');
 }
 
-async function tcSaveStatus() {
+// ── Bulk Leads ──
+let bulkLeadRows = [];
+function handleBulkFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const preview = document.getElementById('bulkPreview');
+  preview.innerHTML = '<div style="font-size:11px;color:var(--text-dim)">Reading file...</div>';
+
+  if (file.name.endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = e => parseBulkCSV(e.target.result);
+    reader.readAsText(file);
+  } else {
+    // xlsx — use SheetJS from CDN if available, else prompt CSV
+    preview.innerHTML = '<div style="font-size:11px;color:var(--amber)">⚠ For .xlsx files please save as .csv first, then upload.</div>';
+  }
+}
+
+function parseBulkCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
+  const titleIdx = headers.indexOf('title');
+  const notesIdx = headers.indexOf('notes');
+  if (titleIdx === -1) {
+    document.getElementById('bulkPreview').innerHTML = '<div style="font-size:11px;color:var(--red)">✗ No "Title" column found. Please add a Title column.</div>';
+    return;
+  }
+  bulkLeadRows = lines.slice(1).map(l => {
+    const cols = l.split(',').map(c => c.trim().replace(/^"|"$/g,''));
+    return { title: cols[titleIdx]||'', notes: notesIdx>=0 ? (cols[notesIdx]||'') : '' };
+  }).filter(r => r.title);
+
+  const preview = document.getElementById('bulkPreview');
+  preview.innerHTML = `
+    <div style="font-size:11px;color:var(--teal);font-weight:700;margin-bottom:8px">✓ ${bulkLeadRows.length} leads ready to create:</div>
+    <div style="max-height:120px;overflow-y:auto;background:var(--navy);border-radius:8px;padding:8px">
+      ${bulkLeadRows.map((r,i) => `<div style="font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--text)">${i+1}. ${esc(r.title)}</div>`).join('')}
+    </div>
+  `;
+  document.getElementById('bulkCreateBtn').style.display = '';
+}
+
+async function createBulkLeads() {
+  if (!bulkLeadRows.length || !currentTask) return;
+  const btn = document.getElementById('bulkCreateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+  let created = 0;
+  for (const row of bulkLeadRows) {
+    try {
+      await createListItem('Tasks', {
+        Title: row.title,
+        TaskType: 'New Lead',
+        TaskStatus: 'Unassigned',
+        PauseStatus: 'Active',
+        ClosingTask: false,
+        ParentMissionLookupId: currentTask.ParentMissionLookupId,
+        Notes: row.notes
+      });
+      created++;
+    } catch(e) { console.warn('Failed to create lead:', row.title, e); }
+  }
+  showToast(`${created} lead tasks created`, 'success');
+  bulkLeadRows = [];
+  closeTaskCard();
+  await loadData();
+}
+
+// ── Actions within task card ──
+function openAddAction() {
+  const form = document.getElementById('addActionForm');
+  if (form) form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+function closeAddAction() {
+  const form = document.getElementById('addActionForm');
+  if (form) form.style.display = 'none';
+  const t = document.getElementById('newActionTitle'); if(t) t.value = '';
+  const ty = document.getElementById('newActionType'); if(ty) ty.value = '';
+}
+function toggleActionExpand(event, id) {
+  event.stopPropagation();
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden');
+}
+async function saveNewAction() {
+  if (!currentTask || !siteId) return;
+  const title = (document.getElementById('newActionTitle')?.value||'').trim();
+  const type  = (document.getElementById('newActionType')?.value||'').trim();
+  const assignEl = document.getElementById('tcAssignInput');
+  const assigned = assignEl ? assignEl.value : '';
+  if (!title) { showToast('Please enter an action title','error'); return; }
+  try {
+    await createListItem('Actions', {
+      Title: title,
+      ActionType: type,
+      ActionStatus: 'Unassigned',
+      PauseStatus: 'Active',
+      ParentTaskLookupId: currentTask.id,
+    });
+    showToast('Action created','success');
+    closeAddAction();
+    await loadData();
+    // Refresh task card
+    const updatedTask = allTasks.find(t => t.id === currentTask.id);
+    if (updatedTask) renderTaskCard(updatedTask, currentTaskMission);
+  } catch(e) { showToast(e.message,'error'); }
+}
+async function updateActionField(actionId, field, val) {
+  try {
+    await updateListItem('Actions', actionId, { [field]: val });
+    showToast('Action updated','success');
+  } catch(e) { showToast(e.message,'error'); }
+}
+
+// ── Task save ──
+async function tcSave() {
   const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
   const status = document.getElementById('tcStatusSel').value;
-  const pauseReason = document.getElementById('tcPauseSel').value;
-  const assignTo = document.getElementById('tcAssignInput').value.trim();
-  const notes = document.getElementById('tcNotesInput').value.trim();
-  const fields = { TaskStatus: status, Notes: notes };
+  const pauseReason = document.getElementById('tcPauseSel')?.value || '';
+  const assignEl = document.getElementById('tcAssignInput');
+  const assignTo = assignEl ? assignEl.value.trim() : '';
+  const notes = (document.getElementById('tcNotesInput')?.value||'').trim();
+  const fields = { TaskStatus: status, Notes: notes, PauseStatus: status==='Paused'?'Paused':'Active' };
   if (pauseReason) fields.PauseReason = pauseReason;
-  if (status === 'Paused') fields.PauseStatus = 'Paused';
-  else fields.PauseStatus = 'Active';
-  if (assignTo) {
-    try { await updateListItem('Tasks', taskId, { AssignedToText: assignTo }); }
-    catch(e) {}
-  }
   try {
     await updateListItem('Tasks', taskId, fields);
-    showToast('Task updated', 'success');
+    if (assignTo) {
+      // AssignedTo is a Person field — use Graph user lookup
+      try {
+        const member = groupMembers.find(m => m.email === assignTo || m.name === assignTo);
+        if (member) {
+          await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { 'AssignedTo@odata.type': '#microsoft.graph.fieldValueSet', AssignedToLookupId: member.id });
+        }
+      } catch(e) { /* person field assignment may need different approach */ }
+    }
+    showToast('Task saved','success');
     closeTaskCard();
     await loadData();
-  } catch(e) { showToast(e.message, 'error'); }
+  } catch(e) { showToast(e.message,'error'); }
 }
 
 function closeTaskCard(e) {
   if (e && e.target !== document.getElementById('taskCardOverlay')) return;
   document.getElementById('taskCardOverlay').classList.add('hidden');
+  currentTask = null;
+  currentTaskMission = null;
 }
 
 function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); currentMission = null; }
