@@ -1084,6 +1084,11 @@ let allMissions = [];
 let allTasks = [];
 let currentMission = null;
 let currentFilter = 'all';
+let allActions = [];
+let groupMembers = [];
+let taskFilter = 'all';
+let taskSortCol = 'age';
+let taskSortDir = 1;
 
 // ═══════════════════════════════
 // AUTH
@@ -1221,12 +1226,15 @@ async function init() {
 async function loadData() {
   setGridLoading();
   try {
-    const [mi, ti] = await Promise.all([
+    const [mi, ti, ai] = await Promise.all([
       getListItems('Missions'),
-      getListItems('Tasks')
+      getListItems('Tasks'),
+      getListItems('Actions')
     ]);
     allMissions = mi.map(i => ({ id: i.id, ...i.fields })).filter(m => m.MissionStatus !== 'Closed');
     allTasks    = ti.map(i => ({ id: i.id, ...i.fields }));
+    allActions  = ai.map(i => ({ id: i.id, ...i.fields }));
+    if(!groupMembers.length) loadGroupMembers();
     renderStats();
     renderGrid();
     renderPool();
@@ -1695,6 +1703,34 @@ const WF_APPROVED_CONTACT = {
 
 // Generic: free-form actions, manual closure
 const WF_GENERIC = { free: true };
+
+// ═══════════════════════════════
+// GROUP MEMBERS
+// ═══════════════════════════════
+async function loadGroupMembers() {
+  try {
+    const r = await gGet(`/sites/${siteId}/members`);
+    groupMembers = (r.value||[]).map(m=>({name:m.displayName,email:m.mail||m.userPrincipalName,id:m.id}));
+  } catch(e) {
+    try {
+      const r2 = await gGet(`/groups?$filter=displayName eq 'ERT War Room'&$select=id`);
+      if(r2.value&&r2.value[0]) {
+        const r3 = await gGet(`/groups/${r2.value[0].id}/members?$select=displayName,mail,userPrincipalName,id`);
+        groupMembers = (r3.value||[]).map(m=>({name:m.displayName,email:m.mail||m.userPrincipalName,id:m.id}));
+      }
+    } catch(e2){ console.warn('Could not load group members',e2); }
+  }
+}
+
+function memberSelectHtml(selectedEmail) {
+  if(!groupMembers.length) {
+    return `<input class="form-input" id="tcAssignInput" value="${esc(selectedEmail||'')}" placeholder="Enter email..." onclick="event.stopPropagation()" />`;
+  }
+  return `<select class="form-select" id="tcAssignInput" onclick="event.stopPropagation()">
+    <option value="">— Unassigned —</option>
+    ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(m.email===selectedEmail||m.name===selectedEmail)?'selected':''}>${esc(m.name)}</option>`).join('')}
+  </select>`;
+}
 
 function getWorkflow(taskType) {
   if(taskType === 'New Lead') return WF_NEW_LEAD;
