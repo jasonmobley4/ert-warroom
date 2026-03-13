@@ -414,7 +414,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1fr 180px 120px 90px;
+  grid-template-columns: 1fr 180px 120px 100px 90px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -422,6 +422,19 @@ body::after {
   font-size: 12px;
   transition: background 0.12s;
   animation: fadeup 0.25s ease both;
+}
+.task-row-header {
+  display: grid;
+  grid-template-columns: 1fr 180px 120px 100px 90px;
+  gap: 12px;
+  padding: 7px 18px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid var(--border);
+  background: rgba(56,190,201,0.03);
 }
 .task-row:last-child { border-bottom: none; }
 .task-row:hover { background: rgba(56,190,201,0.04); }
@@ -899,6 +912,7 @@ body::after {
   .stat-bar { overflow-x: auto; }
   .stat { min-width: 110px; }
   .task-row { grid-template-columns: 1fr 90px; }
+  .task-row .ta-actions { display: none; }
   .task-row .tt-badge, .task-row .ta { display: none; }
 }
 </style>
@@ -969,6 +983,13 @@ body::after {
     <div class="pool-hdr">
       <div class="pool-title">⚠ Needs Assignment</div>
       <div class="pool-count" id="poolCount">loading...</div>
+    </div>
+    <div class="task-row-header">
+      <div>Task</div>
+      <div>Parent Mission</div>
+      <div>Type</div>
+      <div>Actions</div>
+      <div>Age</div>
     </div>
     <div id="taskPoolBody">
       <div class="loading-state" style="padding:36px;"><div class="spinner"></div></div>
@@ -1291,10 +1312,14 @@ function renderPool() {
   document.getElementById('taskPoolBody').innerHTML = tasks.map((t,i)=>{
     const age = t.Created ? hoursSince(t.Created) : null;
     const mName = t.ParentMission || t.ParentMissionLookupValue || '—';
-    return `<div class="task-row" style="animation-delay:${i*0.03}s">
+    const parentMission = allMissions.find(m => m.id === (t.ParentMissionLookupId || t.ParentMissionId));
+    const actionCount = t.ActionCount || t.Actions || 0;
+    const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
+    return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:${mJson?'pointer':'default'}" ${mJson?`onclick="event.stopPropagation();openDetail(${mJson})"`:''}>
       <div class="tn">${esc(t.Title||'—')}</div>
       <div class="tm">${esc(mName)}</div>
       <div><span class="tt-badge">${esc(t.TaskType||'—')}</span></div>
+      <div class="ta-actions" style="font-size:11px;font-weight:600;color:var(--text-dim);">${actionCount}</div>
       <div class="ta${age!==null&&age>4?' urgent':''}">${age!==null?age+'h ago':'—'}</div>
     </div>`;
   }).join('');
@@ -1513,7 +1538,9 @@ async function updateTaskAssign(event, taskId) {
   event.stopPropagation();
   const val = event.target.value;
   try {
-    await updateListItem('Tasks', taskId, { AssignedTo: val });
+    // Try AssignedToText first (plain text column), fall back to AssignedTo
+    try { await updateListItem('Tasks', taskId, { AssignedToText: val }); }
+    catch(e) { await updateListItem('Tasks', taskId, { AssignedTo: val }); }
     showToast('Task assigned', 'success');
     await loadData();
   } catch(e) { showToast(e.message, 'error'); }
