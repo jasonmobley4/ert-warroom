@@ -998,6 +998,22 @@ body::after {
 
 </div>
 
+<!-- TASK CARD MODAL -->
+<div class="modal-overlay hidden" id="taskCardOverlay" onclick="closeTaskCard(event)">
+  <div class="modal-panel" id="taskCardPanel" onclick="event.stopPropagation()" style="max-width:520px">
+    <div class="mp-stripe" id="tcStripe"></div>
+    <div class="mp-header">
+      <div>
+        <div class="mp-title" id="tcTitle">—</div>
+        <div id="tcBadges" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;"></div>
+      </div>
+      <button class="mp-close" onclick="event.stopPropagation();closeTaskCard()">✕</button>
+    </div>
+    <div class="mp-actions" id="tcActions"></div>
+    <div class="mp-body" id="tcBody"></div>
+  </div>
+</div>
+
 <!-- DETAIL PANEL -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="closeModalBg(event)">
   <div class="modal-panel" id="modalPanel" onclick="event.stopPropagation()">
@@ -1223,7 +1239,8 @@ function isOnHold(m) { return m.MissionOnHold===true || m.MissionOnHold==='Yes';
 function missionTasks(m) {
   return allTasks.filter(t =>
     String(t.ParentMissionLookupId) === String(m.id) ||
-    t.ParentMission === m.Title
+    String(t.ParentMission) === String(m.id) ||
+    (t.ParentMissionLookupValue && t.ParentMissionLookupValue === m.Title)
   );
 }
 
@@ -1310,16 +1327,20 @@ function renderPool() {
     return;
   }
   document.getElementById('taskPoolBody').innerHTML = tasks.map((t,i)=>{
-    const age = t.Created ? hoursSince(t.Created) : null;
-    const mName = t.ParentMission || t.ParentMissionLookupValue || '—';
-    const parentMission = allMissions.find(m => m.id === (t.ParentMissionLookupId || t.ParentMissionId));
-    const actionCount = t.ActionCount || t.Actions || 0;
+    const age = t.DateCreated ? hoursSince(t.DateCreated) : (t.Created ? hoursSince(t.Created) : null);
+    // ParentMission is a Lookup — Graph returns ParentMissionLookupId and ParentMissionLookupValue
+    const mName = t.ParentMissionLookupValue || t.ParentMission || '—';
+    const parentMission = allMissions.find(m =>
+      String(m.id) === String(t.ParentMissionLookupId) ||
+      m.Title === t.ParentMissionLookupValue
+    );
+    const tJson = JSON.stringify(t).replace(/"/g,'&quot;');
     const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
-    return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:${mJson?'pointer':'default'}" ${mJson?`onclick="event.stopPropagation();openDetail(${mJson})"`:''}>
+    return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:pointer" onclick="event.stopPropagation();openTaskCard(${tJson},${mJson||'null'})">
       <div class="tn">${esc(t.Title||'—')}</div>
-      <div class="tm">${esc(mName)}</div>
+      <div class="tm" style="color:var(--teal);font-weight:600">${esc(mName)}</div>
       <div><span class="tt-badge">${esc(t.TaskType||'—')}</span></div>
-      <div class="ta-actions" style="font-size:11px;font-weight:600;color:var(--text-dim);">${actionCount}</div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-dim);">—</div>
       <div class="ta${age!==null&&age>4?' urgent':''}">${age!==null?age+'h ago':'—'}</div>
     </div>`;
   }).join('');
@@ -1428,36 +1449,12 @@ function openDetail(m) {
       </div>
       <div id="taskList">
         ${tasks.length ? tasks.map((t,ti)=>`
-          <div class="task-item" onclick="toggleTaskExpand(event,'task-exp-${ti}')">
+          <div class="task-item" onclick="event.stopPropagation();openTaskCard(${JSON.stringify(t).replace(/"/g,'&quot;')}, null)" style="cursor:pointer">
             <div class="ti-left">
               <div class="ti-name">${esc(t.Title||'—')}</div>
-              <div class="ti-meta">${esc(t.TaskType||'')} · ${esc(t.AssignedTo||'Unassigned')}</div>
+              <div class="ti-meta">${esc(t.TaskType||'')} · ${esc(t.AssignedToLookupValue||t.AssignedTo||'Unassigned')}</div>
             </div>
             <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
-          </div>
-          <div class="task-expand hidden" id="task-exp-${ti}">
-            <div class="te-row">
-              <label class="te-label">Status</label>
-              <select class="form-select" onchange="updateTaskStatus(event,${t.id})" onclick="event.stopPropagation()">
-                <option ${t.TaskStatus==='New'?'selected':''}>New</option>
-                <option ${t.TaskStatus==='In Progress'?'selected':''}>In Progress</option>
-                <option ${t.TaskStatus==='On Hold'?'selected':''}>On Hold</option>
-                <option ${t.TaskStatus==='Complete'?'selected':''}>Complete</option>
-                <option ${t.TaskStatus==='Cancelled'?'selected':''}>Cancelled</option>
-              </select>
-            </div>
-            <div class="te-row">
-              <label class="te-label">Assign To</label>
-              <input class="form-input" placeholder="Name or email..." value="${esc(t.AssignedTo||'')}"
-                onclick="event.stopPropagation()"
-                onchange="updateTaskAssign(event,${t.id})" />
-            </div>
-            <div class="te-row">
-              <label class="te-label">Notes</label>
-              <input class="form-input" placeholder="Task notes..." value="${esc(t.TaskNotes||'')}"
-                onclick="event.stopPropagation()"
-                onchange="updateTaskNotes(event,${t.id})" />
-            </div>
           </div>`).join('')
         : '<div class="empty-state" style="padding:20px;"><div class="empty-text">No Tasks Yet</div></div>'}
       </div>
@@ -1493,6 +1490,103 @@ function openDetail(m) {
   `;
 
   document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function openTaskCard(t, parentMission) {
+  document.getElementById('tcStripe').className = 'mp-stripe s-p3';
+  document.getElementById('tcTitle').textContent = t.Title || '—';
+
+  const assigned = t.AssignedToLookupValue || t.AssignedTo || 'Unassigned';
+  document.getElementById('tcBadges').innerHTML = `
+    <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
+    <span class="spill" style="background:rgba(74,158,255,0.1);color:var(--blue);border:1px solid rgba(74,158,255,0.2)">${esc(t.TaskType||'—')}</span>
+    ${t.PauseStatus==='Paused'?'<span class="spill sp-hold">⏸ Paused</span>':''}
+  `;
+
+  // Action buttons
+  document.getElementById('tcActions').innerHTML = `
+    <button class="action-btn primary" onclick="event.stopPropagation();tcSaveStatus()">💾 Save Changes</button>
+    ${parentMission ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskCard();openDetail(${JSON.stringify(parentMission).replace(/"/g,'&quot;')})">↗ View Mission</button>` : ''}
+  `;
+
+  document.getElementById('tcBody').innerHTML = `
+    <div class="mp-section">
+      <div class="mp-sec-label">Task Details</div>
+      <div class="mp-fields">
+        <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
+        <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal)">${esc(t.ParentMissionLookupValue||t.ParentMission||'—')}</div></div>
+        <div><div class="mp-field-lbl">Created</div><div class="mp-field-val mono">${t.DateCreated||t.Created||'—'}</div></div>
+        <div><div class="mp-field-lbl">Completed</div><div class="mp-field-val mono">${t.DateCompleted||'—'}</div></div>
+      </div>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-sec-label">Status & Assignment</div>
+      <div class="te-row" style="margin-bottom:10px">
+        <label class="te-label">Status</label>
+        <select class="form-select" id="tcStatusSel" onclick="event.stopPropagation()">
+          <option ${t.TaskStatus==='Unassigned'?'selected':''}>Unassigned</option>
+          <option ${t.TaskStatus==='In Progress'?'selected':''}>In Progress</option>
+          <option ${t.TaskStatus==='Paused'?'selected':''}>Paused</option>
+          <option ${t.TaskStatus==='Completed'?'selected':''}>Completed</option>
+        </select>
+      </div>
+      <div class="te-row" style="margin-bottom:10px">
+        <label class="te-label">Pause Reason</label>
+        <select class="form-select" id="tcPauseSel" onclick="event.stopPropagation()">
+          <option value="">—</option>
+          <option ${t.PauseReason==='Awaiting callback'?'selected':''}>Awaiting callback</option>
+          <option ${t.PauseReason==='Awaiting information'?'selected':''}>Awaiting information</option>
+          <option ${t.PauseReason==='Scheduled'?'selected':''}>Scheduled</option>
+          <option ${t.PauseReason==='Responder unavailable'?'selected':''}>Responder unavailable</option>
+          <option ${t.PauseReason==='Lead unresponsive'?'selected':''}>Lead unresponsive</option>
+          <option ${t.PauseReason==='Blocked external'?'selected':''}>Blocked external</option>
+          <option ${t.PauseReason==='Mission on hold'?'selected':''}>Mission on hold</option>
+          <option ${t.PauseReason==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+      <div class="te-row">
+        <label class="te-label">Assign To</label>
+        <input class="form-input" id="tcAssignInput" value="${esc(assigned==='Unassigned'?'':assigned)}" placeholder="Name or email..." onclick="event.stopPropagation()" />
+      </div>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-sec-label">Notes</div>
+      <textarea class="form-input" id="tcNotesInput" rows="4" style="resize:vertical;width:100%" onclick="event.stopPropagation()" placeholder="Add notes...">${esc(t.Notes||'')}</textarea>
+    </div>
+  `;
+
+  // Store task id for save
+  document.getElementById('taskCardOverlay').dataset.taskId = t.id;
+  document.getElementById('taskCardOverlay').classList.remove('hidden');
+}
+
+async function tcSaveStatus() {
+  const taskId = document.getElementById('taskCardOverlay').dataset.taskId;
+  const status = document.getElementById('tcStatusSel').value;
+  const pauseReason = document.getElementById('tcPauseSel').value;
+  const assignTo = document.getElementById('tcAssignInput').value.trim();
+  const notes = document.getElementById('tcNotesInput').value.trim();
+  const fields = { TaskStatus: status, Notes: notes };
+  if (pauseReason) fields.PauseReason = pauseReason;
+  if (status === 'Paused') fields.PauseStatus = 'Paused';
+  else fields.PauseStatus = 'Active';
+  if (assignTo) {
+    try { await updateListItem('Tasks', taskId, { AssignedToText: assignTo }); }
+    catch(e) {}
+  }
+  try {
+    await updateListItem('Tasks', taskId, fields);
+    showToast('Task updated', 'success');
+    closeTaskCard();
+    await loadData();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+function closeTaskCard(e) {
+  if (e && e.target !== document.getElementById('taskCardOverlay')) return;
+  document.getElementById('taskCardOverlay').classList.add('hidden');
 }
 
 function closeModal() { document.getElementById('modalOverlay').classList.add('hidden'); currentMission = null; }
@@ -1550,7 +1644,7 @@ async function updateTaskNotes(event, taskId) {
   event.stopPropagation();
   const val = event.target.value;
   try {
-    await updateListItem('Tasks', taskId, { TaskNotes: val });
+    await updateListItem('Tasks', taskId, { Notes: val });
     showToast('Task notes saved', 'success');
   } catch(e) { showToast(e.message, 'error'); }
 }
