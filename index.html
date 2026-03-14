@@ -491,7 +491,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1.8fr 220px 110px 110px 120px 110px 80px;
+  grid-template-columns: 1.4fr 90px 160px 110px 120px 110px 80px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -502,7 +502,7 @@ body::after {
 }
 .task-row-header {
   display: grid;
-  grid-template-columns: 1.8fr 220px 110px 110px 120px 110px 80px;
+  grid-template-columns: 1.4fr 90px 160px 110px 120px 110px 80px;
   gap: 12px;
   padding: 7px 18px;
   font-size: 10px;
@@ -836,7 +836,7 @@ body::after {
   user-select: none;
   flex-shrink: 0;
 }
-.tw-title { font-size: 12px; font-weight: 700; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-title { font-size: 13px; font-weight: 700; color: #ffffff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tw-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
 .tw-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 14px; padding: 2px 5px; border-radius: 4px; line-height: 1; }
 .tw-btn:hover { background: var(--navy-hover); color: var(--text); }
@@ -1162,8 +1162,8 @@ body::after {
   <div class="task-pool">
     <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 180px 120px 110px 130px 110px 80px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
       <div class="th-col" onclick="sortTasks('Title')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Task <span id="sort-Title"></span></div>
-      <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission <span id="sort-ParentMission"></span></div>
-      <div class="th-col" onclick="sortTasks('TaskType')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Type <span id="sort-TaskType"></span></div>
+      <div class="th-col" onclick="sortTasks('TTNumber')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">TT # <span id="sort-TTNumber"></span></div>
+      <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission Type <span id="sort-ParentMission"></span></div>
       <div class="th-col" onclick="sortTasks('TaskStatus')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Status <span id="sort-TaskStatus"></span></div>
       <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Action Status</div>
       <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Assigned To</div>
@@ -1619,10 +1619,12 @@ function renderPool() {
     const latestAction = taskActs.length ? taskActs[taskActs.length-1] : null;
     const actionStatus = latestAction ? (latestAction.Title||'').replace(/^Action \d+[A-Z]?\s*—\s*/,'').substring(0,20) : '—';
     const actionStatusCls = latestAction?.ActionStatus==='Completed'?'color:var(--text-muted)':latestAction?.ActionStatus==='In Progress'?'color:var(--teal)':'color:var(--text-dim)';
+    const ttNum = parentMission ? (parentMission.TTNumber||'—') : '—';
+    const missionType = mName.replace(/^Urgent:\s*/i,'').replace(/^Generic:\s*/i,'').split('—')[0].trim().substring(0,25);
     return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:pointer" onclick="event.stopPropagation();openTaskCard(${tJson},${mJson||'null'})">
       <div class="tn">${esc(t.Title||'—')}</div>
-      <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(mName)}</div>
-      <div><span class="tt-badge">${esc(t.TaskType||'—')}</span></div>
+      <div class="tm" style="font-weight:700;font-family:monospace;font-size:13px">${esc(ttNum)}</div>
+      <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(missionType||mName)}</div>
       <div><span class="ts-pill ${statusCls}">${esc(t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
       <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${actionStatusCls}">${esc(actionStatus)}</div>
       <div class="ta-assigned" style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(assigned)}</div>
@@ -2107,7 +2109,7 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
 
   const missionBtn = mJson ? `<button class="action-btn" onclick="event.stopPropagation();closeTaskWindow('${winId}');openDetail(${mJson})">↗ View Mission</button>` : '';
 
-  const topBtns = `<div class="mp-actions" style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">${pauseResumeBtn}${missionBtn}</div>`;
+  const topBtns = `<div class="mp-actions" style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:6px">${pauseResumeBtn}${missionBtn}</div>`;
 
   // Build workflow section
   let workflowSection = '';
@@ -2258,7 +2260,7 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
     <button class="action-btn" style="margin-top:6px" onclick="event.stopPropagation();tcSaveNotesWin('${winId}',${t.id})">Save Notes</button>
   </div>`;
 
-  body.innerHTML = topBtns + `<div style="padding:0 0 80px 0">${assignSection}${workflowSection}${genericSection}${bulkSection}${notesSection}</div>`;
+  body.innerHTML = topBtns + `<div style="padding:0 16px 80px 16px">${assignSection}${workflowSection}${genericSection}${bulkSection}${notesSection}</div>`;
 }
 
 // ── Window-scoped action functions ──
@@ -2302,7 +2304,7 @@ async function logContactAttemptWin(winId, taskId) {
   const attemptNum = attempts.length + 1;
   try {
     await createListItem('Actions', {
-      Title: `Attempt ${attemptNum}`, ActionType: method, ActionStatus: 'Completed', PauseStatus: 'Active',
+      Title: `Attempt ${attemptNum} — ${method}`, ActionStatus: 'Completed', PauseStatus: 'Active',
       Notes: `${result}${notes?' | '+notes:''}`, ParentTaskLookupId: parseInt(taskId),
     });
     if(attemptNum===1) await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
@@ -2318,7 +2320,7 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const actionNum = allActions.filter(a=>String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length+1;
   try {
-    await createListItem('Actions', { Title:`Action 1 — ${label}`, ActionType:'Final Outcome', ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${finalNotes}`, ParentTaskLookupId:parseInt(taskId) });
+    await createListItem('Actions', { Title:`Action 1 — ${label}`, ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${finalNotes}`, ParentTaskLookupId:parseInt(taskId) });
   } catch(e) { console.warn(e); }
   if(result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
@@ -2335,7 +2337,7 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
   if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   try {
-    await createListItem('Actions', { Title:`Action — ${label}`, ActionType:'Outcome', ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${notes}`, ParentTaskLookupId:parseInt(taskId) });
+    await createListItem('Actions', { Title:`Action — ${label}`, ActionStatus:'Completed', PauseStatus:'Active', Notes:`[${timestamp}] ${notes}`, ParentTaskLookupId:parseInt(taskId) });
   } catch(e) { console.warn(e); }
   if(result==='close_success'||result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
@@ -2348,7 +2350,7 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
   } else if(result.startsWith('next_')) {
     const nextName = result==='next_2a'?'Action 2A — Log Bid Outcome':result==='next_2b'?'Action 2B — Training':'Action 3 — Log Bid Outcome';
-    await createListItem('Actions', { Title:nextName, ActionStatus:'Unassigned', PauseStatus:'Active', Notes:'', ParentTaskLookupId:parseInt(taskId) });
+    await createListItem('Actions', { Title:nextName, ActionStatus:'Unassigned', PauseStatus:'Active', Notes:'Auto-created', ParentTaskLookupId:parseInt(taskId) });
     await updateListItem('Tasks', taskId, { Notes:note });
     showToast(nextName+' created', 'success'); closeTaskWindow(winId);
   }
@@ -2411,7 +2413,7 @@ async function saveNewActionWin(winId, taskId) {
   const title = (document.getElementById(winId+'_actionTitle')?.value||'').trim();
   const type  = (document.getElementById(winId+'_actionType')?.value||'').trim();
   if(!title) { showToast('Action name required', 'error'); return; }
-  await createListItem('Actions', { Title:title, ActionType:type, ActionStatus:'Unassigned', PauseStatus:'Active', ParentTaskLookupId:parseInt(taskId) });
+  await createListItem('Actions', { Title:type?`${title} — ${type}`:title, ActionStatus:'Unassigned', PauseStatus:'Active', Notes:'', ParentTaskLookupId:parseInt(taskId) });
   showToast('Action created', 'success'); await loadData(); refreshOpenTaskWindows();
 }
 
