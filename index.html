@@ -1786,39 +1786,36 @@ function openDetail(m) {
 // GROUP MEMBERS
 // ═══════════════════════════════
 async function loadGroupMembers() {
-  // Step 1: Load ERT Members list (names + emails)
+  // Step 1: Load ERT Members list
   let ertMembers = [];
   try {
     const items = await getListItems('ERT Members');
     ertMembers = items.map(i => ({
-      name: i.fields?.Title || '',
-      email: (i.fields?.Email || '').toLowerCase(),
-      spId: null
+      name: (i.fields?.Title || '').trim(),
+      email: (i.fields?.Email || '').toLowerCase().trim(),
+      spId: null, azureId: null
     })).filter(m => m.name && m.email);
   } catch(e) { console.warn('ERT Members list error:', e.message); }
 
-  // Step 2: Get SharePoint User IDs from User Information List
+  // Step 2: Get existing SP user IDs
+  let spUsers = [];
   try {
-    const r = await gGet(`/sites/${siteId}/lists/User Information List/items?expand=fields($select=Title,EMail,UserName)&$top=200`);
-    const spUsers = (r.value||[]).filter(i => i.fields?.EMail)
-      .map(i => ({ spId: parseInt(i.id), email: (i.fields.EMail||'').toLowerCase(), name: i.fields.Title||'' }));
-    
-    // Match ERT Members to SP users by email
-    if(ertMembers.length) {
-      groupMembers = ertMembers.map(m => {
-        const spUser = spUsers.find(u => u.email === m.email);
-        return { name: m.name, email: m.email, spId: spUser ? spUser.spId : null };
-      });
-    } else {
-      // Fallback: use SP users directly (anyone who has logged in)
-      groupMembers = spUsers.filter(u => u.email.includes('@downtimetrace') || u.email.includes('@'))
-        .map(u => ({ name: u.name, email: u.email, spId: u.spId }));
-    }
-    console.log('Group members loaded:', groupMembers.map(m => m.name + ' (spId:'+m.spId+')'));
-  } catch(e) { 
-    console.warn('SP user lookup failed:', e.message);
-    groupMembers = ertMembers; // use without spId
-  }
+    const r = await gGet(`/sites/${siteId}/lists/User Information List/items?expand=fields($select=Title,EMail)&$top=200`);
+    spUsers = (r.value||[]).filter(i => i.fields?.EMail)
+      .map(i => ({ spId: parseInt(i.id), email: (i.fields.EMail||'').toLowerCase() }));
+  } catch(e) { console.warn('SP user list error:', e.message); }
+
+  // Step 3: Match members to SP IDs; fetch Azure AD IDs for the rest
+  groupMembers = await Promise.all(ertMembers.map(async m => {
+    const spUser = spUsers.find(u => u.email === m.email);
+    if(spUser) return { ...m, spId: spUser.spId };
+    try {
+      const az = await gGet('/users/' + encodeURIComponent(m.email) + '?$select=id');
+      if(az && az.id) return { ...m, azureId: az.id };
+    } catch(e) {}
+    return m;
+  }));
+  console.log('Members:', groupMembers.map(m => m.name + ' spId:' + m.spId + ' az:' + (m.azureId||'-')));
 }
 
 function memberSelectHtml(selectedEmail) {
@@ -2136,8 +2133,17 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
   let workflowSection = '';
   if(isTyped && wf.actions) {
     const isContactLog = wf.actions[0] && wf.actions[0].isContactLog;
-    const progressedPast1 = taskActions.some(a => a.Title && a.Title.includes('Action 1 —'));
-    const nextActionNum = isContactLog && !progressedPast1 ? 1 : taskActions.filter(a=>a.ActionStatus==='Completed'&&!a.Title.includes('Attempt')).length + 1;
+    // Count completed workflow outcome steps (NOT contact attempt logs)
+    // A completed step has a Title starting with "Action" or containing a final outcome label
+    // and is marked Completed in field_2 (internal name) or ActionStatus
+    const completedOutcomeSteps = taskActions.filter(a => {
+      if(!a.Title) return false;
+      if(a.Title.match(/^Attempt \d/)) return false; // skip contact attempt logs
+      const isComplete = (a.field_2 === 'Completed') || (a.ActionStatus === 'Completed');
+      return isComplete;
+    }).length;
+    const progressedPast1 = completedOutcomeSteps >= 1;
+    const nextActionNum = (isContactLog && !progressedPast1) ? 1 : completedOutcomeSteps + 1;
     const wfAction = wf.actions.find(wa => wa.num === nextActionNum || String(wa.num) === String(nextActionNum));
 
     const actionItems = taskActions.map((a,ai) => {
@@ -2301,24 +2307,48 @@ async function tcAssignChange(winId, email, taskId) {
   const member = groupMembers.find(m => m.email === email || m.name === email);
   const displayName = member ? member.name : email;
   try {
-    // Set status to In Progress
     await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
-    // Set person field using SharePoint numeric user ID
-    if(member && member.spId) {
-      await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { AssignedToLookupId: member.spId });
-    } else if(member) {
-      // User hasn't logged into SharePoint yet - try Graph user lookup
-      try {
-        const ur = await gGet(`/sites/${siteId}/lists/User Information List/items?expand=fields($select=Title,EMail)&$filter=fields/EMail eq '${encodeURIComponent(member.email)}'`);
-        if(ur.value && ur.value[0]) {
-          const spId = parseInt(ur.value[0].id);
-          member.spId = spId; // cache it
-          await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { AssignedToLookupId: spId });
-        } else {
-          showToast(`Assigned to ${displayName} (must log in to SharePoint first to appear in person field)`, 'success');
+
+    if(member) {
+      let assigned = false;
+
+      // Try SP numeric ID (user has previously logged into SharePoint)
+      if(member.spId) {
+        try {
+          await gPatch('/sites/' + siteId + '/lists/Tasks/items/' + taskId + '/fields', { AssignedToLookupId: member.spId });
+          assigned = true;
+        } catch(e) { console.warn('SP assign failed:', e.message); }
+      }
+
+      // Try Azure AD ID as fallback
+      if(!assigned) {
+        try {
+          if(!member.azureId) {
+            const az = await gGet('/users/' + encodeURIComponent(member.email) + '?$select=id');
+            if(az && az.id) member.azureId = az.id;
+          }
+          if(member.azureId) {
+            await gPatch('/sites/' + siteId + '/lists/Tasks/items/' + taskId + '/fields', { AssignedToLookupId: member.azureId });
+            assigned = true;
+          }
+        } catch(e) { console.warn('Azure ID assign failed:', e.message); }
+      }
+
+      // Last resort: write name into task notes so it is not lost
+      if(!assigned) {
+        const task = allTasks.find(t => String(t.id) === String(taskId));
+        const existing = task?.Notes || '';
+        const tag = '[Assigned: ' + displayName + ']';
+        if(!existing.includes(tag)) {
+          await updateListItem('Tasks', taskId, { Notes: (existing ? existing + ' ' : '') + tag });
         }
-      } catch(e2) { console.warn('SP user lookup failed:', e2); }
+        showToast('Assigned to ' + displayName + ' (person must log into the SP site once to activate person field)', 'success');
+        await loadData();
+        refreshOpenTaskWindows();
+        return;
+      }
     }
+
     showToast('Assigned to ' + displayName, 'success');
     await loadData();
     refreshOpenTaskWindows();
