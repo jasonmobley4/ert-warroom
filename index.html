@@ -829,14 +829,15 @@ body::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: #1a3550;
   border-bottom: 2px solid var(--teal);
   cursor: move;
   user-select: none;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.tw-title { font-size: 13px; font-weight: 700; color: #ffffff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tw-title { font-size: 13px; font-weight: 700; color: #ffffff !important; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 .tw-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
 .tw-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.6); font-size: 14px; padding: 2px 4px; border-radius: 4px; line-height: 1; flex-shrink: 0; }
 .tw-btn:hover { background: var(--navy-hover); color: var(--text); }
@@ -1949,10 +1950,11 @@ function openTaskCard(t, parentMission) {
 
   // Fan position: offset each window
   const idx = openTaskWindows.length;
-  const centerX = window.innerWidth / 2 - 240;
-  const centerY = window.innerHeight / 2 - 300;
-  const fanX = centerX + idx * 28;
-  const fanY = centerY + idx * 24;
+  const winW = 540;
+  const centerX = Math.max(20, window.innerWidth / 2 - winW / 2);
+  const centerY = Math.max(80, window.innerHeight / 2 - 300);
+  const fanX = Math.min(centerX + idx * 28, window.innerWidth - winW - 20);
+  const fanY = Math.min(centerY + idx * 24, window.innerHeight - 200);
   el.style.cssText = `left:${fanX}px;top:${fanY}px;z-index:${twZBase + idx + 1}`;
 
   // Build window HTML
@@ -1977,12 +1979,11 @@ function buildTaskWindowHTML(t, parentMission, winId) {
   const uc = t.TaskType==='Approved Contact'?'p1':t.TaskType==='New Lead'?'p2':'p3';
   const mName = t.ParentMissionLookupValue || (parentMission ? parentMission.Title : '') || t.ParentMission || '—';
   return `
-    <div class="tw-titlebar" id="${winId}_bar">
-      <div class="mp-stripe s-${uc}" style="width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
+    <div class="tw-titlebar" id="${winId}_bar" style="border-left:4px solid var(--${uc === 'p1' ? 'red' : uc === 'p2' ? 'amber' : 'teal'})">
       <div class="tw-title" title="${esc(t.Title||'—')}">${esc(t.Title||'—')}</div>
-      <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
-      <button class="tw-btn" onclick="minimizeTaskWindow('${winId}')" title="Minimize">—</button>
-      <button class="tw-btn" onclick="closeTaskWindow('${winId}')" title="Close">✕</button>
+      <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}" style="flex-shrink:0">${esc(t.TaskStatus||'—')}</span>
+      <button class="tw-btn" onclick="minimizeTaskWindow('${winId}')" title="Minimize" style="flex-shrink:0">—</button>
+      <button class="tw-btn" onclick="closeTaskWindow('${winId}')" title="Close" style="flex-shrink:0">✕</button>
     </div>
     <div class="tw-body" id="${winId}_body">
       <div style="padding:24px;text-align:center"><div class="spinner"></div></div>
@@ -2022,7 +2023,7 @@ function addTaskbarTab(t, winId) {
   const tab = document.createElement('div');
   tab.className = 'tw-tab';
   tab.dataset.winId = winId;
-  tab.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${esc(t.Title||'Task')}</span><span class="tw-tab-close" onclick="event.stopPropagation();closeTaskWindow('${winId}')">✕</span>`;
+  tab.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;color:#fff">${esc(t.Title||'Task')}</span><span class="tw-tab-close" onclick="event.stopPropagation();closeTaskWindow('${winId}')">✕</span>`;
   tab.onclick = () => {
     const win = openTaskWindows.find(w => w.id === winId);
     if(win) {
@@ -2204,9 +2205,19 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
                   <span style="font-size:10px;color:var(--teal)">▾</span>
                 </div>
               </div>
-              <div style="display:none;padding:8px 10px;background:var(--navy);font-size:11px;border-top:1px solid var(--border)">
-                ${(a.field_6||a.Notes||a.fields?.field_6||a.fields?.Notes) ? `<div style="color:var(--text);margin-bottom:4px">${esc(a.field_6||a.Notes||a.fields?.field_6||a.fields?.Notes||"")}</div>` : '<div style="color:var(--text-muted)">No notes recorded</div>'}
-                ${a.field_2 ? `<div style="color:var(--text-muted);font-size:10px">Status: ${esc(a.field_2)}</div>` : ''}
+              <div style="display:none;padding:10px 12px;background:var(--navy);font-size:12px;border-top:1px solid var(--border)">
+                ${(()=>{
+                  const noteText = a.field_6||a.Notes||'';
+                  const parts = noteText.split('|').map(s=>s.trim()).filter(Boolean);
+                  const result = parts[0]||'—';
+                  const note = parts.slice(1).join(' | ')||'';
+                  return \`<div style="display:grid;grid-template-columns:80px 1fr;gap:6px;color:var(--text)">
+                    <span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">Result</span>
+                    <span style="font-weight:600">\${esc(result)}</span>
+                    \${note?\`<span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">Notes</span><span>\${esc(note)}</span>\`:''}
+                    \${a.field_2?'<span style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em">Status</span><span style="color:var(--teal)">'+esc(a.field_2)+'</span>':''}
+                  </div>\`;
+                })()}
               </div>
             </div>`).join('')}
           </div>` : ''}
