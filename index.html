@@ -811,7 +811,7 @@ body::after {
 }
 .task-window {
   position: fixed;
-  width: 480px;
+  width: 540px;
   max-height: 85vh;
   background: var(--navy-card);
   border: 1px solid var(--border-hi);
@@ -837,8 +837,8 @@ body::after {
   flex-shrink: 0;
 }
 .tw-title { font-size: 13px; font-weight: 700; color: #ffffff; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tw-badge { font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 10px; white-space: nowrap; }
-.tw-btn { background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 14px; padding: 2px 5px; border-radius: 4px; line-height: 1; }
+.tw-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+.tw-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.6); font-size: 14px; padding: 2px 4px; border-radius: 4px; line-height: 1; flex-shrink: 0; }
 .tw-btn:hover { background: var(--navy-hover); color: var(--text); }
 .tw-body { flex: 1; overflow-y: auto; padding: 0; }
 .tw-body::-webkit-scrollbar { width: 4px; }
@@ -1786,24 +1786,39 @@ function openDetail(m) {
 // GROUP MEMBERS
 // ═══════════════════════════════
 async function loadGroupMembers() {
-  try {
-    const r = await gGet(`/users?$select=displayName,mail,userPrincipalName,id&$top=50&$filter=accountEnabled eq true`);
-    if(r.value && r.value.length) {
-      groupMembers = r.value.filter(u => u.mail && !u.mail.includes('#EXT#'))
-        .map(m => ({ name: m.displayName, email: m.mail||m.userPrincipalName, id: m.id }));
-      if(groupMembers.length) return;
-    }
-  } catch(e) {}
+  // Step 1: Load ERT Members list (names + emails)
+  let ertMembers = [];
   try {
     const items = await getListItems('ERT Members');
-    if(items && items.length) {
-      groupMembers = items.map(i => ({
-        name: i.fields?.Title||i.fields?.MemberName||'',
-        email: i.fields?.Email||i.fields?.MemberEmail||'',
-        id: i.id
-      })).filter(m => m.name && m.email);
+    ertMembers = items.map(i => ({
+      name: i.fields?.Title || '',
+      email: (i.fields?.Email || '').toLowerCase(),
+      spId: null
+    })).filter(m => m.name && m.email);
+  } catch(e) { console.warn('ERT Members list error:', e.message); }
+
+  // Step 2: Get SharePoint User IDs from User Information List
+  try {
+    const r = await gGet(`/sites/${siteId}/lists/User Information List/items?expand=fields($select=Title,EMail,UserName)&$top=200`);
+    const spUsers = (r.value||[]).filter(i => i.fields?.EMail)
+      .map(i => ({ spId: parseInt(i.id), email: (i.fields.EMail||'').toLowerCase(), name: i.fields.Title||'' }));
+    
+    // Match ERT Members to SP users by email
+    if(ertMembers.length) {
+      groupMembers = ertMembers.map(m => {
+        const spUser = spUsers.find(u => u.email === m.email);
+        return { name: m.name, email: m.email, spId: spUser ? spUser.spId : null };
+      });
+    } else {
+      // Fallback: use SP users directly (anyone who has logged in)
+      groupMembers = spUsers.filter(u => u.email.includes('@downtimetrace') || u.email.includes('@'))
+        .map(u => ({ name: u.name, email: u.email, spId: u.spId }));
     }
-  } catch(e) {}
+    console.log('Group members loaded:', groupMembers.map(m => m.name + ' (spId:'+m.spId+')'));
+  } catch(e) { 
+    console.warn('SP user lookup failed:', e.message);
+    groupMembers = ertMembers; // use without spId
+  }
 }
 
 function memberSelectHtml(selectedEmail) {
@@ -1967,7 +1982,7 @@ function buildTaskWindowHTML(t, parentMission, winId) {
   return `
     <div class="tw-titlebar" id="${winId}_bar">
       <div class="mp-stripe s-${uc}" style="width:4px;height:20px;border-radius:2px;flex-shrink:0"></div>
-      <div class="tw-title">${esc(t.Title||'—')}</div>
+      <div class="tw-title" title="${esc(t.Title||'—')}">${esc(t.Title||'—')}</div>
       <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
       <button class="tw-btn" onclick="minimizeTaskWindow('${winId}')" title="Minimize">—</button>
       <button class="tw-btn" onclick="closeTaskWindow('${winId}')" title="Close">✕</button>
@@ -2085,6 +2100,11 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
   // Build body content — same content as before but scoped to this window
   const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
 
+  // Find currently assigned person by looking up spId in AssignedToLookupId
+  const assignedSpId = t.AssignedToLookupId ? parseInt(t.AssignedToLookupId) : null;
+  const assignedMember = groupMembers.find(m => m.spId && m.spId === assignedSpId);
+  const assignedLookupVal = t.AssignedToLookupValue || t.AssignedTo || '';
+
   const assignSection = `
     <div class="mp-section">
       <div class="mp-sec-label">Details</div>
@@ -2093,14 +2113,15 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
         <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
       </div>
       <div class="mp-sec-label" style="margin-top:12px">Assignment</div>
+      ${assignedMember || assignedLookupVal ? `<div style="font-size:11px;color:var(--teal);font-weight:600;margin-bottom:8px">Currently: ${esc(assignedMember?assignedMember.name:assignedLookupVal)}</div>` : ''}
       <div class="te-row">
         <label class="te-label">Assign To</label>
         <select class="form-select" id="${winId}_assign" onclick="event.stopPropagation()" onchange="event.stopPropagation();tcAssignChange('${winId}',this.value,${t.id})">
           <option value="">— Unassigned —</option>
-          ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(m.email===assigned||m.name===assigned)?'selected':''}>${esc(m.name)}</option>`).join('')}
+          ${groupMembers.map(m=>`<option value="${esc(m.email)}" ${(assignedMember&&m.email===assignedMember.email)||(m.name===assignedLookupVal)?'selected':''}>${esc(m.name)}</option>`).join('')}
         </select>
       </div>
-      ${!groupMembers.length ? `<div style="font-size:10px;color:var(--amber);margin-top:6px">⚠ No members loaded — see setup instructions</div>` : ''}
+      ${!groupMembers.length ? `<div style="font-size:10px;color:var(--amber);margin-top:6px">⚠ Add members to the ERT Members SharePoint list</div>` : ''}
     </div>`;
 
   const pauseResumeBtn = t.PauseStatus==='Paused'
@@ -2168,9 +2189,19 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
           </div>
           ${attempts.length ? `<div style="padding:8px 14px;border-bottom:1px solid var(--border);background:var(--navy)">
             <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Attempt History</div>
-            ${attempts.map(a=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
-              <span style="font-weight:600;color:var(--text)">${esc(a.ActionType||'')} → <span style="color:var(--text-dim)">${esc(a.Notes?a.Notes.split('|')[0]:'—')}</span></span>
-              <span style="color:var(--text-muted);font-size:10px">${a.DateCreated?new Date(a.DateCreated).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span>
+            ${attempts.map((a,ai)=>`
+            <div style="border:1px solid var(--border);border-radius:6px;margin-bottom:4px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;cursor:pointer;background:var(--navy-light)" onclick="event.stopPropagation();this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
+                <span style="font-weight:700;font-size:11px;color:var(--text)">${esc(a.Title||'Attempt')}</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:10px;color:var(--text-muted)">${a.Created?new Date(a.Created).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''}</span>
+                  <span style="font-size:10px;color:var(--teal)">▾</span>
+                </div>
+              </div>
+              <div style="display:none;padding:8px 10px;background:var(--navy);font-size:11px;border-top:1px solid var(--border)">
+                ${(a.field_6||a.Notes||a.fields?.field_6||a.fields?.Notes) ? `<div style="color:var(--text);margin-bottom:4px">${esc(a.field_6||a.Notes||a.fields?.field_6||a.fields?.Notes||"")}</div>` : '<div style="color:var(--text-muted)">No notes recorded</div>'}
+                ${a.field_2 ? `<div style="color:var(--text-muted);font-size:10px">Status: ${esc(a.field_2)}</div>` : ''}
+              </div>
             </div>`).join('')}
           </div>` : ''}
           <div style="padding:12px 14px">
@@ -2268,11 +2299,27 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
 async function tcAssignChange(winId, email, taskId) {
   if(!email) return;
   const member = groupMembers.find(m => m.email === email || m.name === email);
-  const name = member ? member.name : email;
+  const displayName = member ? member.name : email;
   try {
-    // AssignedTo on Tasks is a plain text column
-    await updateListItem('Tasks', taskId, { AssignedTo: name, TaskStatus: 'In Progress' });
-    showToast('Assigned to ' + name + ' — status set to In Progress', 'success');
+    // Set status to In Progress
+    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
+    // Set person field using SharePoint numeric user ID
+    if(member && member.spId) {
+      await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { AssignedToLookupId: member.spId });
+    } else if(member) {
+      // User hasn't logged into SharePoint yet - try Graph user lookup
+      try {
+        const ur = await gGet(`/sites/${siteId}/lists/User Information List/items?expand=fields($select=Title,EMail)&$filter=fields/EMail eq '${encodeURIComponent(member.email)}'`);
+        if(ur.value && ur.value[0]) {
+          const spId = parseInt(ur.value[0].id);
+          member.spId = spId; // cache it
+          await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { AssignedToLookupId: spId });
+        } else {
+          showToast(`Assigned to ${displayName} (must log in to SharePoint first to appear in person field)`, 'success');
+        }
+      } catch(e2) { console.warn('SP user lookup failed:', e2); }
+    }
+    showToast('Assigned to ' + displayName, 'success');
     await loadData();
     refreshOpenTaskWindows();
   } catch(e) { showToast(e.message, 'error'); }
