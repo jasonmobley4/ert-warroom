@@ -2192,18 +2192,49 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
   let workflowSection = '';
   if(isTyped && wf.actions) {
     const isContactLog = wf.actions[0] && wf.actions[0].isContactLog;
-    // Count completed workflow outcome steps (NOT contact attempt logs)
-    // A completed step has a Title starting with "Action" or containing a final outcome label
-    // and is marked Completed in field_2 (internal name) or ActionStatus
-    const completedOutcomeSteps = taskActions.filter(a => {
-      if(!a.Title) return false;
-      if(a.Title.match(/^Attempt \d/)) return false; // skip contact attempt logs
-      const isComplete = (a.field_2 === 'Completed') || (a.ActionStatus === 'Completed');
-      return isComplete;
-    }).length;
-    const progressedPast1 = completedOutcomeSteps >= 1;
-    const nextActionNum = (isContactLog && !progressedPast1) ? 1 : completedOutcomeSteps + 1;
-    const wfAction = wf.actions.find(wa => wa.num === nextActionNum || String(wa.num) === String(nextActionNum));
+
+    // Determine which workflow action to show next:
+    // Strategy: find the most recent auto-created or outcome action that is NOT yet completed
+    // This handles branching (2A/2B/3) correctly without relying on counting
+
+    // Step 1: separate attempts from outcome/workflow actions
+    const attemptActions = taskActions.filter(a => a.Title && a.Title.match(/^Attempt \d/));
+    const outcomeActions = taskActions.filter(a => a.Title && !a.Title.match(/^Attempt \d/));
+
+    // Step 2: find the last incomplete outcome action — that's the current step
+    const incompleteOutcome = outcomeActions.find(a => {
+      const status = a.field_2 || a.ActionStatus || '';
+      return status !== 'Completed';
+    });
+
+    // Step 3: if there's an incomplete auto-created action, find its workflow definition by title
+    let wfAction = null;
+    if(incompleteOutcome) {
+      // Match by title substring to workflow action name
+      wfAction = wf.actions.find(wa => {
+        const waName = (wa.name||'').toLowerCase();
+        const title = (incompleteOutcome.Title||'').toLowerCase();
+        return title.includes(waName) || waName.includes(title.replace(/^action \w+ — /,''));
+      });
+      // Fallback: match by action number in title (e.g. "Action 2A —" → num '2A')
+      if(!wfAction) {
+        const numMatch = (incompleteOutcome.Title||'').match(/^Action (\w+)/i);
+        if(numMatch) {
+          const n = numMatch[1];
+          wfAction = wf.actions.find(wa => String(wa.num) === n);
+        }
+      }
+    }
+
+    // Step 4: if no incomplete auto-created action, check if Action 1 is done
+    if(!wfAction) {
+      const completedOutcomes = outcomeActions.filter(a => (a.field_2||a.ActionStatus) === 'Completed');
+      const progressedPast1 = completedOutcomes.length >= 1;
+      if(isContactLog && !progressedPast1) {
+        wfAction = wf.actions[0]; // still on Action 1 contact log
+      }
+      // else: all actions done, no wfAction → task shows as complete
+    }
 
     const actionItems = taskActions.map((a,ai) => {
       // field_2 is the internal name for ActionStatus in this SP list
@@ -2247,12 +2278,17 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
 
     if(wfAction && t.TaskStatus !== 'Completed') {
       if(wfAction.isContactLog) {
-        const attempts = taskActions.filter(a => a.Title && a.Title.includes('Attempt'));
+        // Only count attempts for THIS action step (after previous action completed)
+        const prevCompleted = outcomeActions.filter(a => (a.field_2||a.ActionStatus)==='Completed');
+        const prevCompletedDate = prevCompleted.length ? new Date(prevCompleted[prevCompleted.length-1].Created||0) : new Date(0);
+        const attempts = taskActions.filter(a => a.Title && a.Title.match(/^Attempt \d/) &&
+          (!prevCompleted.length || new Date(a.Created||0) >= prevCompletedDate));
+        const actionLabel = 'Action ' + wfAction.num;
         workflowSection += `
         <div class="mp-section" style="border:1px solid var(--border-hi);border-radius:var(--radius-md);padding:0;overflow:hidden">
           <div style="background:var(--teal-soft);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-            <div><div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">Action 1</div>
-            <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">Make Contact</div></div>
+            <div><div style="font-size:10px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.08em">${esc(actionLabel)}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${esc(wfAction.name)}</div></div>
             <div style="font-size:11px;color:var(--text-dim)">${attempts.length} attempt${attempts.length!==1?'s':''} logged</div>
           </div>
           <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
