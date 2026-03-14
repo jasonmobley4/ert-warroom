@@ -1873,35 +1873,72 @@ const WF_NEW_LEAD = {
 
 const WF_APPROVED_CONTACT = {
   actions: [
+    // Action 1: Contact attempt log (same repeatable pattern as New Lead)
+    // These are existing members — goal is to get them to log in and bid
     { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
-      fields: ['contact_attempts','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'Will Bid Later', style: 'warning', result: 'next_2a', note: 'Will bid later — follow up created' },
-        { label: 'Needs Training', style: 'warning', result: 'next_2b', note: 'Needs training — training action created' },
+      isContactLog: true,
+      fields: ['contact_attempts', 'notes'],
+      attemptOutcomes: {
+        Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
+        Email:       ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
+        Text:        ['Reply received','No reply','Delivered','Failed to deliver'],
+        'In person': ['Contacted','Not available','Referred to another contact'],
+      },
+      finalOutcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
+          note: 'Closed — member not bidding on this ticket' },
+        { label: 'Cannot Contact', style: 'warning', result: 'close_fail',
+          note: 'Closed — unable to reach member' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success',
+          note: 'Closed — member bid placed successfully' },
+        { label: 'Will Bid Later → Log Follow-up', style: 'info', result: 'next_2a',
+          note: 'Member will bid later — follow-up scheduled' },
+        { label: 'Needs Training → Schedule Training', style: 'info', result: 'next_2b',
+          note: 'Member needs training — training action created' },
       ]
     },
-    { num: '2A', name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true,
-      fields: ['followup_date','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+    // Action 2A: Follow-up (auto-created when member says they will bid later)
+    { num: '2A', name: 'Follow-up — Confirm Bid', taskStatus: 'Awaiting Bid', autocreated: true,
+      isContactLog: true,
+      attemptOutcomes: {
+        Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
+        Email:       ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
+        Text:        ['Reply received','No reply','Delivered','Failed to deliver'],
+        'In person': ['Contacted','Not available','Referred to another contact'],
+      },
+      finalOutcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
+          note: 'Closed — member not bidding' },
+        { label: 'Cannot Contact', style: 'warning', result: 'close_fail',
+          note: 'Closed — unable to reach for follow-up' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success',
+          note: 'Closed — member bid placed successfully' },
       ]
     },
-    { num: '2B', name: 'Training', taskStatus: 'Training', autocreated: true,
+    // Action 2B: Training (auto-created when member needs training)
+    { num: '2B', name: 'Training Session', taskStatus: 'Training', autocreated: true,
       fields: ['training_date','training_method','notes'],
       outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'Will Bid Later', style: 'warning', result: 'next_3', note: 'Will bid later — final follow up created' },
+        { label: 'Training Complete — Bid Expected', style: 'success', result: 'next_3',
+          note: 'Training done — follow-up bid confirmation created' },
+        { label: 'Not Bidding After Training', style: 'danger', result: 'close_fail',
+          note: 'Closed — member declined after training' },
       ]
     },
-    { num: 3, name: 'Log Bid Outcome', taskStatus: 'Awaiting Bid', autocreated: true, final: true,
-      fields: ['followup_date','notes'],
-      outcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success', note: 'Closed — success' },
+    // Action 3: Final bid confirmation after training
+    { num: 3, name: 'Confirm Bid After Training', taskStatus: 'Awaiting Bid', autocreated: true, final: true,
+      isContactLog: true,
+      attemptOutcomes: {
+        Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
+        Email:       ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
+        Text:        ['Reply received','No reply','Delivered','Failed to deliver'],
+        'In person': ['Contacted','Not available','Referred to another contact'],
+      },
+      finalOutcomes: [
+        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
+          note: 'Closed — member not bidding after training' },
+        { label: 'Bid Placed', style: 'success', result: 'close_success',
+          note: 'Closed — member bid placed successfully' },
       ]
     }
   ]
@@ -2263,7 +2300,7 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
               ${wfAction.finalOutcomes.map(o=>{
-                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':'action-btn warning';
+                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':o.style==='info'?'action-btn primary':'action-btn warning';
                 return `<button class="${cls}" onclick="event.stopPropagation();recordFinalOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
               }).join('')}
             </div>
@@ -2283,7 +2320,7 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
             </div>
             <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
               ${wfAction.outcomes.map(o=>{
-                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':'action-btn warning';
+                const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':o.style==='info'?'action-btn primary':'action-btn warning';
                 return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
               }).join('')}
             </div>
@@ -2456,18 +2493,60 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
   const finalNotes = (document.getElementById(winId+'_final_notes')?.value||'').trim();
   if(!finalNotes) { showToast('Notation required', 'error'); document.getElementById(winId+'_final_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  const actionNum = allActions.filter(a=>String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length+1;
+
+  // Log the final outcome as a completed action
   try {
-    const fa = await createListItem('Actions', { Title:`Action 1 — ${label}`, ParentTaskLookupId:parseInt(taskId) });
-    if(fa && fa.id) await gPatch(`/sites/${siteId}/lists/Actions/items/${fa.id}/fields`, { field_2:'Completed', field_6:`[${timestamp}] ${finalNotes}` });
+    const fa = await createListItem('Actions', { Title:'Action 1 — '+label, ParentTaskLookupId:parseInt(taskId) });
+    if(fa && fa.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+fa.id+'/fields', { field_2:'Completed', field_6:'['+timestamp+'] '+finalNotes });
   } catch(e) { console.warn(e); }
+
   if(result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
-    showToast('Task closed — '+label, 'success'); closeTaskWindow(winId);
+    showToast('Task closed — '+label, 'success');
+    closeTaskWindow(winId);
+
+  } else if(result==='close_success') {
+    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
+    showToast('Task closed — success', 'success');
+    closeTaskWindow(winId);
+
   } else if(result==='next') {
+    // New Lead: contact made, move to Onboarding
     await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
-    showToast('Contact made — progressing to Onboarding', 'success'); closeTaskWindow(winId);
+    showToast('Contact made — progressing to Onboarding', 'success');
+    closeTaskWindow(winId);
+
+  } else if(result==='next_2a') {
+    // Approved Contact: will bid later — create follow-up action
+    try {
+      const a2 = await createListItem('Actions', { Title:'Action 2A — Follow-up: Confirm Bid', ParentTaskLookupId:parseInt(taskId) });
+      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: member said will bid later' });
+    } catch(e) { console.warn(e); }
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
+    showToast('Follow-up action created — member will bid later', 'success');
+    closeTaskWindow(winId);
+
+  } else if(result==='next_2b') {
+    // Approved Contact: needs training — create training action
+    try {
+      const a2 = await createListItem('Actions', { Title:'Action 2B — Training Session', ParentTaskLookupId:parseInt(taskId) });
+      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: member needs training' });
+    } catch(e) { console.warn(e); }
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
+    showToast('Training action created', 'success');
+    closeTaskWindow(winId);
+
+  } else if(result==='next_3') {
+    // After training: create final bid confirmation action
+    try {
+      const a3 = await createListItem('Actions', { Title:'Action 3 — Confirm Bid After Training', ParentTaskLookupId:parseInt(taskId) });
+      if(a3 && a3.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a3.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: follow-up after training complete' });
+    } catch(e) { console.warn(e); }
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
+    showToast('Bid confirmation follow-up created', 'success');
+    closeTaskWindow(winId);
   }
+
   await loadData();
 }
 
