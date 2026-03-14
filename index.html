@@ -2267,21 +2267,12 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
 
 async function tcAssignChange(winId, email, taskId) {
   if(!email) return;
+  const member = groupMembers.find(m => m.email === email || m.name === email);
+  const name = member ? member.name : email;
   try {
-    // First update status to In Progress
-    await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
-    // Person field: try to find user ID from groupMembers
-    const member = groupMembers.find(m => m.email === email || m.name === email);
-    if(member && member.id) {
-      try {
-        // Graph person field uses AssignedToLookupId
-        await gPatch(`/sites/${siteId}/lists/Tasks/items/${taskId}/fields`, { 'AssignedToLookupId': member.id });
-      } catch(e2) {
-        // If lookup fails, just store email in Notes as fallback
-        console.warn('Person field assign failed, storing in notes:', e2.message);
-      }
-    }
-    showToast('Assigned to ' + (member ? member.name : email) + ' — status set to In Progress', 'success');
+    // AssignedTo on Tasks is a plain text column
+    await updateListItem('Tasks', taskId, { AssignedTo: name, TaskStatus: 'In Progress' });
+    showToast('Assigned to ' + name + ' — status set to In Progress', 'success');
     await loadData();
     refreshOpenTaskWindows();
   } catch(e) { showToast(e.message, 'error'); }
@@ -2315,14 +2306,26 @@ async function logContactAttemptWin(winId, taskId) {
   const attempts = allActions.filter(a=>(String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId))&&a.Title&&a.Title.includes('Attempt'));
   const attemptNum = attempts.length + 1;
   try {
-    await createListItem('Actions', {
-      Title: `Attempt ${attemptNum} — ${method}`, field_2: 'Completed', field_4: 'Active',
-      field_6: `${result}${notes?' | '+notes:''}`, ParentTaskLookupId: parseInt(taskId),
+    // Actions requires two-step: create then patch choice fields
+    const newAction = await createListItem('Actions', {
+      Title: `Attempt ${attemptNum} — ${method}`,
+      ParentTaskLookupId: parseInt(taskId),
     });
+    if(newAction && newAction.id) {
+      await gPatch(`/sites/${siteId}/lists/Actions/items/${newAction.id}/fields`, {
+        field_2: 'Completed', field_6: `${result}${notes?' | '+notes:''}`
+      });
+    }
     if(attemptNum===1) await updateListItem('Tasks', taskId, { TaskStatus: 'In Progress' });
     showToast(`Attempt ${attemptNum} logged — ${method}: ${result}`, 'success');
+    // Clear attempt fields
+    const n = document.getElementById(winId+'_attempt_notes'); if(n) n.value = '';
+    const dt = document.getElementById(winId+'_datetime'); if(dt) dt.value = '';
+    // Reload data and re-render card so attempt appears in history and fields reset
     await loadData();
-    refreshOpenTaskWindows();
+    const updatedTask = allTasks.find(t => String(t.id) === String(taskId));
+    const win = openTaskWindows.find(w => w.id === winId);
+    if(updatedTask && win) { win.task = updatedTask; renderTaskCardIntoWindow(updatedTask, win.parentMission, winId); }
   } catch(e) { showToast(e.message, 'error'); }
 }
 
@@ -2332,7 +2335,8 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   const actionNum = allActions.filter(a=>String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId)).length+1;
   try {
-    await createListItem('Actions', { Title:`Action 1 — ${label}`, field_2:'Completed', field_4:'Active', field_6:`[${timestamp}] ${finalNotes}`, ParentTaskLookupId:parseInt(taskId) });
+    const fa = await createListItem('Actions', { Title:`Action 1 — ${label}`, ParentTaskLookupId:parseInt(taskId) });
+    if(fa && fa.id) await gPatch(`/sites/${siteId}/lists/Actions/items/${fa.id}/fields`, { field_2:'Completed', field_6:`[${timestamp}] ${finalNotes}` });
   } catch(e) { console.warn(e); }
   if(result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
@@ -2349,7 +2353,8 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
   if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   try {
-    await createListItem('Actions', { Title:`Action — ${label}`, field_2:'Completed', field_4:'Active', field_6:`[${timestamp}] ${notes}`, ParentTaskLookupId:parseInt(taskId) });
+    const oa = await createListItem('Actions', { Title:`Action — ${label}`, ParentTaskLookupId:parseInt(taskId) });
+    if(oa && oa.id) await gPatch(`/sites/${siteId}/lists/Actions/items/${oa.id}/fields`, { field_2:'Completed', field_6:`[${timestamp}] ${notes}` });
   } catch(e) { console.warn(e); }
   if(result==='close_success'||result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
@@ -2362,7 +2367,7 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
   } else if(result.startsWith('next_')) {
     const nextName = result==='next_2a'?'Action 2A — Log Bid Outcome':result==='next_2b'?'Action 2B — Training':'Action 3 — Log Bid Outcome';
-    await createListItem('Actions', { Title:nextName, field_2:'Unassigned', field_4:'Active', field_6:'Auto-created', ParentTaskLookupId:parseInt(taskId) });
+    await createListItem('Actions', { Title:nextName, ParentTaskLookupId:parseInt(taskId) });
     await updateListItem('Tasks', taskId, { Notes:note });
     showToast(nextName+' created', 'success'); closeTaskWindow(winId);
   }
@@ -2425,7 +2430,7 @@ async function saveNewActionWin(winId, taskId) {
   const title = (document.getElementById(winId+'_actionTitle')?.value||'').trim();
   const type  = (document.getElementById(winId+'_actionType')?.value||'').trim();
   if(!title) { showToast('Action name required', 'error'); return; }
-  await createListItem('Actions', { Title:type?`${title} — ${type}`:title, field_2:'Unassigned', field_4:'Active', field_6:'', ParentTaskLookupId:parseInt(taskId) });
+  await createListItem('Actions', { Title:type?`${title} — ${type}`:title, ParentTaskLookupId:parseInt(taskId) });
   showToast('Action created', 'success'); await loadData(); refreshOpenTaskWindows();
 }
 
