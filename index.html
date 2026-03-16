@@ -1619,6 +1619,20 @@ function sortTasks(col) {
   renderPool();
 }
 
+// Build a Notes value that preserves person data while appending a workflow note
+// Person data is stored as "Phone: X | Company: Y | Class: Z | Email: E | Specialty: S"
+// Workflow notes are appended after a double-pipe separator "||"
+function buildSafeNotes(currentNotes, workflowNote) {
+  if(!currentNotes) return workflowNote || '';
+  const personKeys = ['Phone:', 'Company:', 'Class:', 'Email:', 'Specialty:'];
+  const hasPersonData = personKeys.some(k => currentNotes.includes(k));
+  if(!hasPersonData) return workflowNote || currentNotes;
+  // Extract just the person data portion (everything before "||" if present)
+  const personPart = currentNotes.split('||')[0].trim();
+  if(!workflowNote) return personPart;
+  return personPart + ' || ' + workflowNote;
+}
+
 // Parse person task info from Notes field
 function parsePersonNotes(notes) {
   const result = { company: '', userClass: '', phone: '', email: '', specialty: '' };
@@ -1977,7 +1991,8 @@ const WF_NEW_LEAD = {
       name: 'Onboarding Scheduler',
       taskStatus: 'Scheduling Onboarding',
       autocreated: true,
-      fields: ['meeting_scheduled', 'notes'],
+      fields: ['meeting_scheduled'],
+      isScheduler: true,
       outcomes: [
         { label: 'Not Interested',    style: 'danger',  result: 'close_fail',    note: 'Closed — not interested after scheduling',
           nextTitle: null },
@@ -2009,7 +2024,8 @@ const WF_NEW_LEAD = {
       name: 'Training Scheduler',
       taskStatus: 'Scheduling Training',
       autocreated: true,
-      fields: ['training_date', 'notes'],
+      fields: ['training_date'],
+      isScheduler: true,
       outcomes: [
         { label: 'Not Interested',      style: 'danger',  result: 'close_fail',    note: 'Closed — not interested after training scheduling',
           nextTitle: null },
@@ -2082,7 +2098,8 @@ const WF_APPROVED_CONTACT = {
       name: 'Bid Follow-up Scheduler',
       taskStatus: 'Scheduling Follow-up',
       autocreated: true,
-      fields: ['followup_date', 'notes'],
+      fields: ['followup_date'],
+      isScheduler: true,
       outcomes: [
         { label: 'Not Bidding',
           style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding',
@@ -2127,7 +2144,8 @@ const WF_APPROVED_CONTACT = {
       name: 'Training Scheduler',
       taskStatus: 'Scheduling Training',
       autocreated: true,
-      fields: ['training_date', 'notes'],
+      fields: ['training_date'],
+      isScheduler: true,
       outcomes: [
         { label: 'Not Bidding',
           style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding after training request',
@@ -2379,6 +2397,9 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
   const assignedMember = groupMembers.find(m => m.spId && m.spId === assignedSpId);
   const assignedLookupVal = t.AssignedToLookupValue || t.AssignedTo || '';
 
+  const isPersonTask = (t.TaskType==='New Lead' || t.TaskType==='Approved Contact');
+  const pInfo = parsePersonNotes(t.Notes||'');
+
   const assignSection = `
     <div class="mp-section">
       <div class="mp-sec-label">Details</div>
@@ -2386,6 +2407,18 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
         <div><div class="mp-field-lbl">Parent Mission</div><div class="mp-field-val" style="color:var(--teal);font-weight:600">${esc(mName)}</div></div>
         <div><div class="mp-field-lbl">Task Type</div><div class="mp-field-val">${esc(t.TaskType||'—')}</div></div>
       </div>
+      ${isPersonTask ? `
+      <div style="margin-top:12px;background:rgba(56,190,201,0.05);border:1px solid rgba(56,190,201,0.15);border-radius:8px;padding:12px 14px;">
+        <div style="font-size:9px;font-weight:800;color:var(--teal);text-transform:uppercase;letter-spacing:.14em;margin-bottom:10px">Contact Info</div>
+        <div class="mp-fields">
+          <div><div class="mp-field-lbl">Name</div><div class="mp-field-val" style="font-weight:600">${esc(t.Title.replace(/^(New Lead|Approved Contact)-/i,'').trim()||'—')}</div></div>
+          <div><div class="mp-field-lbl">Phone</div><div class="mp-field-val mono">${esc(pInfo.phone||'—')}</div></div>
+          <div><div class="mp-field-lbl">Company</div><div class="mp-field-val">${esc(pInfo.company||'—')}</div></div>
+          <div><div class="mp-field-lbl">User Class</div><div class="mp-field-val"><span style="font-weight:700;color:var(--teal)">${esc(pInfo.userClass||'—')}</span></div></div>
+          ${pInfo.email ? '<div><div class="mp-field-lbl">Email</div><div class="mp-field-val">' + esc(pInfo.email) + '</div></div>' : ''}
+          ${pInfo.specialty ? '<div><div class="mp-field-lbl">Specialty</div><div class="mp-field-val">' + esc(pInfo.specialty) + '</div></div>' : ''}
+        </div>
+      </div>` : ''}
       <div class="mp-sec-label" style="margin-top:12px">Assignment</div>
       ${assignedMember || assignedLookupVal ? `<div style="font-size:11px;color:var(--teal);font-weight:600;margin-bottom:8px">Currently: ${esc(assignedMember?assignedMember.name:assignedLookupVal)}</div>` : ''}
       <div class="te-row">
@@ -2572,14 +2605,16 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
           </div>
           <div style="padding:12px 14px">
             ${actionFieldsHtml(wfAction.fields, null)}
-            <div class="form-row"><label class="form-label">Notation <span style="color:var(--red)">*</span></label>
-              <textarea class="form-input" id="${winId}_action_notes" rows="2" style="resize:vertical" placeholder="Required..." onclick="event.stopPropagation()"></textarea>
+            <div class="form-row">
+              <label class="form-label">Notes ${wfAction.isScheduler ? '(optional)' : '<span style="color:var(--red)">*</span>'}</label>
+              <textarea class="form-input" id="${winId}_action_notes" rows="2" style="resize:vertical" placeholder="${wfAction.isScheduler ? 'Any additional context...' : 'Required...'}" onclick="event.stopPropagation()"></textarea>
             </div>
             <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
               ${wfAction.outcomes.map(o=>{
                 const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':o.style==='info'?'action-btn primary':'action-btn warning';
                 const nt2 = o.nextTitle ? encodeURIComponent(o.nextTitle) : '';
-                return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}',decodeURIComponent('${nt2}'))">${esc(o.label)}</button>`;
+                const isSchedulerAction = wfAction.isScheduler ? 'true' : 'false';
+                return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}',decodeURIComponent('${nt2}'),${isSchedulerAction})">${esc(o.label)}</button>`;
               }).join('')}
             </div>
           </div>
@@ -2759,12 +2794,12 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTit
   } catch(e) { console.warn(e); }
 
   if(result==='close_fail') {
-    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
     showToast('Task closed — '+label, 'success');
     closeTaskWindow(winId);
 
   } else if(result==='close_success') {
-    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+finalNotes });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
     showToast('Task closed — success', 'success');
     closeTaskWindow(winId);
 
@@ -2778,7 +2813,7 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTit
         if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
       } catch(e) { console.warn('Next action create failed:', e); }
     }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:buildSafeNotes(t?.Notes, note) }); }
     showToast(label + ' — next step created', 'success');
     closeTaskWindow(winId);
 
@@ -2791,7 +2826,7 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTit
         if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: skipped to this step' });
       } catch(e) { console.warn('Skip action create failed:', e); }
     }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:buildSafeNotes(t?.Notes, note) }); }
     showToast(label + ' — progressed to next step', 'success');
     closeTaskWindow(winId);
 
@@ -2801,16 +2836,16 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTit
   await loadData();
 }
 
-async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle) {
+async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle, isScheduler) {
   const notes = (document.getElementById(winId+'_action_notes')?.value||'').trim();
-  if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
+  if(!notes && !isScheduler) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   try {
     const oa = await createListItem('Actions', { Title:`Action — ${label}`, ParentTaskLookupId:parseInt(taskId) });
     if(oa && oa.id) await gPatch(`/sites/${siteId}/lists/Actions/items/${oa.id}/fields`, { field_2:'Completed', field_6:`[${timestamp}] ${notes}` });
   } catch(e) { console.warn(e); }
   if(result==='close_success'||result==='close_fail') {
-    await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
     showToast(result==='close_success'?'Task closed — success ✓':'Task closed — '+label, 'success'); closeTaskWindow(winId);
   } else if(result==='next' || result==='next_skip') {
     // nextTitle passed as 6th argument from outcome button
@@ -2821,10 +2856,10 @@ async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle) {
         if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
       } catch(e) { console.warn('Next action create failed:', e); }
     }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:buildSafeNotes(t?.Notes, note) }); }
     showToast(label + ' — next step created', 'success'); closeTaskWindow(winId);
   } else if(result==='stay') {
-    await updateListItem('Tasks', taskId, { Notes:note+': '+notes });
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
   }
   // Legacy next_ result handlers removed — handled by 'next'/'next_skip' with nextTitle
@@ -2869,7 +2904,7 @@ async function submitPauseWin(winId, taskId) {
   const reason = document.getElementById(winId+'_pauseReason')?.value;
   const note = document.getElementById(winId+'_pauseNote')?.value||'';
   if(!reason) { showToast('Please select a pause reason', 'error'); return; }
-  await updateListItem('Tasks', taskId, { PauseStatus:'Paused', PauseReason:reason, Notes:note||undefined });
+  { const pt=allTasks.find(x=>String(x.id)===String(taskId)); const pn=note?buildSafeNotes(pt?.Notes,note):undefined; await updateListItem('Tasks', taskId, { PauseStatus:'Paused', PauseReason:reason, ...(pn?{Notes:pn}:{}) }); }
   showToast('Task paused', 'success'); closeTaskWindow(winId); await loadData();
 }
 
