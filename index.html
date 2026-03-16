@@ -1167,7 +1167,8 @@ body::after {
   <div class="sec-hdr" style="margin-top:32px">
     <div class="sec-title">All Tasks</div>
     <div class="filters" id="taskFilters">
-      <button class="fbtn active" onclick="setTaskFilter('all',this)">All</button>
+      <button class="fbtn" onclick="setTaskFilter('all',this)">All</button>
+      <button class="fbtn active" onclick="setTaskFilter('open',this)">All Open</button>
       <button class="fbtn" onclick="setTaskFilter('unassigned',this)">Unassigned</button>
       <button class="fbtn" onclick="setTaskFilter('inprogress',this)">In Progress</button>
       <button class="fbtn" onclick="setTaskFilter('paused',this)">Paused</button>
@@ -1292,7 +1293,7 @@ let currentMission = null;
 let currentFilter = 'all';
 let allActions = [];
 let groupMembers = [];
-let taskFilter = 'all';
+let taskFilter = 'open';
 let taskSortCol = 'age';
 let taskSortDir = 1;
 let closedMissions = [];
@@ -1528,6 +1529,7 @@ function cardHtml(m, idx) {
   const tasks = missionTasks(m);
   const unassigned = tasks.filter(t=>t.TaskStatus==='Unassigned').length;
   const active = tasks.filter(t=>t.TaskStatus==='In Progress').length;
+  const completed = tasks.filter(t=>t.TaskStatus==='Completed').length;
   const mJson = JSON.stringify(m).replace(/"/g,'&quot;');
 
   return `<div class="card${onhold?' onhold':''}" style="animation-delay:${idx*0.04}s" onclick="openDetail(${mJson})">
@@ -1557,10 +1559,11 @@ function cardHtml(m, idx) {
         <div class="task-counts">
           <div class="tc"><span class="tc-num tc-unassigned">${unassigned}</span> unassigned</div>
           <div class="tc"><span class="tc-num tc-active">${active}</span> active</div>
+          <div class="tc"><span class="tc-num" style="color:var(--teal)">${completed}</span> done</div>
           <div class="tc"><span class="tc-num" style="color:var(--light-dim)">${tasks.length}</span> total</div>
         </div>
       </div>
-      <div class="view-link">View →</div>
+      <div class="view-link" style="font-size:10px;padding:5px 10px">View →</div>
     </div>
   </div>`;
 }
@@ -1653,10 +1656,12 @@ function parsePersonNotes(notes) {
 function renderPool() {
   let tasks = allTasks.filter(t => !t.ClosingTask && t.TaskStatus !== 'Completed');
   // Filter
-  if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
+  if(taskFilter === 'open') tasks = tasks.filter(t => t.TaskStatus !== 'Completed');
+  else if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
   else if(taskFilter === 'inprogress') tasks = tasks.filter(t => t.TaskStatus === 'In Progress');
   else if(taskFilter === 'paused') tasks = tasks.filter(t => t.PauseStatus === 'Paused');
   else if(taskFilter === 'completed') tasks = tasks.filter(t => t.TaskStatus === 'Completed');
+  // 'all' shows everything including completed
 
   // Sort
   tasks = tasks.sort((a,b) => {
@@ -2009,7 +2014,7 @@ const WF_NEW_LEAD = {
       name: 'Onboarding Results',
       taskStatus: 'Onboarding',
       autocreated: true,
-      fields: ['notes'],
+      fields: [],
       outcomes: [
         { label: 'Did Not Proceed',  style: 'danger',  result: 'close_fail',  note: 'Closed — did not proceed after onboarding',
           nextTitle: null },
@@ -2042,7 +2047,7 @@ const WF_NEW_LEAD = {
       name: 'Training Results',
       taskStatus: 'Training',
       autocreated: true,
-      fields: ['notes'],
+      fields: [],
       outcomes: [
         { label: 'Did Not Complete',  style: 'danger',  result: 'close_fail',    note: 'Closed — did not complete training',
           nextTitle: null },
@@ -2166,7 +2171,7 @@ const WF_APPROVED_CONTACT = {
       name: 'Training Results',
       taskStatus: 'Training',
       autocreated: true,
-      fields: ['notes'],
+      fields: [],
       outcomes: [
         { label: 'Not Bidding After Training',
           style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding after training',
