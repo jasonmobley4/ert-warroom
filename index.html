@@ -724,6 +724,25 @@ body::after {
 /* ── PANEL SECTIONS ── */
 .mp-body { padding: 0 0 28px; }
 
+/* Light band overrides — dark text on cream background */
+.mp-band-tasks .mp-sec-label  { color: #1a5c62; border-bottom-color: rgba(26,92,98,0.2); }
+.mp-band-log   .mp-sec-label  { color: #1a5c62; border-bottom-color: rgba(26,92,98,0.2); }
+.mp-band-tasks .ti-name       { color: #1a2a2e; }
+.mp-band-tasks .ti-meta       { color: #4a6268; }
+.mp-band-tasks .ts-pill       { opacity: 0.95; }
+.mp-band-tasks .add-task-form { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.12); }
+.mp-band-tasks .form-label    { color: #2a4a50; }
+.mp-band-tasks .form-input,
+.mp-band-tasks .form-select   { background: #fff; border-color: #c8c0b6; color: #1a2a2e; }
+.mp-band-tasks .btn-save      { background: #1a5c62; border-color: #1a5c62; color: #fff; }
+.mp-band-tasks .btn-cancel    { background: transparent; border-color: #b0a898; color: #4a6268; }
+.mp-band-tasks .empty-state   { background: transparent; }
+.mp-band-tasks .empty-text    { color: #6a8288; }
+.mp-band-log   .log-text      { color: #1a2a2e; }
+.mp-band-log   .log-time      { color: #6a8288; }
+.mp-band-log   .log-input     { background: #fff; border-color: #c8c0b6; color: #1a2a2e; }
+.mp-band-log   .btn-log       { background: #1a5c62; border-color: #1a5c62; color: #fff; }
+
 .mp-section { margin: 0; }
 
 /* Major section blocks — full-width bands with distinct backgrounds */
@@ -733,8 +752,8 @@ body::after {
 }
 .mp-band-actions  { background: rgba(0,0,0,0.18); }
 .mp-band-info     { background: var(--navy-card); }
-.mp-band-tasks    { background: rgba(56,190,201,0.04); border-top: 2px solid rgba(56,190,201,0.15); border-bottom: 2px solid rgba(56,190,201,0.15); }
-.mp-band-log      { background: rgba(255,255,255,0.02); }
+.mp-band-tasks    { background: #f5f3ef; border-top: 2px solid #d6cfc4; border-bottom: 2px solid #d6cfc4; }
+.mp-band-log      { background: #f0ede8; border-bottom: 1px solid #ddd8d0; }
 
 .mp-sec-label {
   font-size: 10px;
@@ -1654,7 +1673,7 @@ function parsePersonNotes(notes) {
 }
 
 function renderPool() {
-  let tasks = allTasks.filter(t => !t.ClosingTask && t.TaskStatus !== 'Completed');
+  let tasks = allTasks.filter(t => !t.ClosingTask); // Completed tasks shown when 'completed' or 'all' filter selected
   // Filter
   if(taskFilter === 'open') tasks = tasks.filter(t => t.TaskStatus !== 'Completed');
   else if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
