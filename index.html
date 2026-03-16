@@ -2295,39 +2295,41 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
     const attemptActions = taskActions.filter(a => a.Title && a.Title.match(/^Attempt \d/));
     const outcomeActions = taskActions.filter(a => a.Title && !a.Title.match(/^Attempt \d/));
 
-    // Step 2: find the last incomplete outcome action — that's the current step
-    const incompleteOutcome = outcomeActions.find(a => {
+    // Step 2: find the first incomplete outcome action — that's the current step
+    // Sort by ID ascending so we get the earliest unfinished one
+    const sortedOutcomes = [...outcomeActions].sort((a,b) => parseInt(a.id)-parseInt(b.id));
+    const incompleteOutcome = sortedOutcomes.find(a => {
       const status = a.field_2 || a.ActionStatus || '';
       return status !== 'Completed';
     });
 
-    // Step 3: if there's an incomplete auto-created action, find its workflow definition by title
+    // Step 3: match incomplete action to workflow definition
     let wfAction = null;
     if(incompleteOutcome) {
-      // Match by title substring to workflow action name
-      wfAction = wf.actions.find(wa => {
-        const waName = (wa.name||'').toLowerCase();
-        const title = (incompleteOutcome.Title||'').toLowerCase();
-        return title.includes(waName) || waName.includes(title.replace(/^action \w+ — /,''));
-      });
-      // Fallback: match by action number in title (e.g. "Action 2A —" → num '2A')
+      const title = (incompleteOutcome.Title||'').toLowerCase();
+      // Try matching by action number in title: "Action 2 —" → num 2, "Action 2A —" → num '2A'
+      const numMatch = (incompleteOutcome.Title||'').match(/^Action\s+(\w+)\s*[—\-]/i);
+      if(numMatch) {
+        const n = numMatch[1];
+        wfAction = wf.actions.find(wa => String(wa.num) === n);
+      }
+      // Fallback: match by name substring
       if(!wfAction) {
-        const numMatch = (incompleteOutcome.Title||'').match(/^Action (\w+)/i);
-        if(numMatch) {
-          const n = numMatch[1];
-          wfAction = wf.actions.find(wa => String(wa.num) === n);
-        }
+        wfAction = wf.actions.find(wa => {
+          const waName = (wa.name||'').toLowerCase();
+          return title.includes(waName) || waName.includes(title.replace(/^action \w+ [—\-] /,'').trim());
+        });
       }
     }
 
-    // Step 4: if no incomplete auto-created action, check if Action 1 is done
+    // Step 4: no incomplete action found — determine current position
     if(!wfAction) {
-      const completedOutcomes = outcomeActions.filter(a => (a.field_2||a.ActionStatus) === 'Completed');
-      const progressedPast1 = completedOutcomes.length >= 1;
-      if(isContactLog && !progressedPast1) {
-        wfAction = wf.actions[0]; // still on Action 1 contact log
+      const completedOutcomes = sortedOutcomes.filter(a => (a.field_2||a.ActionStatus) === 'Completed');
+      if(completedOutcomes.length === 0 && isContactLog) {
+        // Haven't completed Action 1 yet
+        wfAction = wf.actions[0];
       }
-      // else: all actions done, no wfAction → task shows as complete
+      // else all done — wfAction stays null, nothing to render
     }
 
     const actionItems = taskActions.map((a,ai) => {
@@ -2641,9 +2643,13 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
     closeTaskWindow(winId);
 
   } else if(result==='next') {
-    // New Lead: contact made, move to Onboarding
+    // New Lead: contact made — auto-create Action 2 (Onboarding)
+    try {
+      const a2 = await createListItem('Actions', { Title:'Action 2 — Onboarding', ParentTaskLookupId:parseInt(taskId) });
+      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: contact made, moving to onboarding' });
+    } catch(e) { console.warn('Action 2 create failed:', e); }
     await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
-    showToast('Contact made — progressing to Onboarding', 'success');
+    showToast('Contact made — Action 2 (Onboarding) created', 'success');
     closeTaskWindow(winId);
 
   } else if(result==='next_2a') {
@@ -2692,8 +2698,20 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
     showToast(result==='close_success'?'Task closed — success ✓':'Task closed — '+label, 'success'); closeTaskWindow(winId);
   } else if(result==='next') {
+    // Auto-create next workflow step — determine which action number comes next
+    // by counting completed outcome actions for this task
+    const taskActs = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId));
+    const completedOutcomes = taskActs.filter(a => a.Title && !a.Title.match(/^Attempt \d/) && (a.field_2||a.ActionStatus)==='Completed');
+    const nextNum = completedOutcomes.length + 1;
+    // Map next number to action name
+    const nextNames = {3: 'Action 3 — Training', 4: 'Action 4 — Follow-up'};
+    const nextTitle = nextNames[nextNum] || ('Action ' + nextNum + ' — Next Step');
+    try {
+      const na = await createListItem('Actions', { Title: nextTitle, ParentTaskLookupId:parseInt(taskId) });
+      if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
+    } catch(e) { console.warn('Next action create failed:', e); }
     await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
-    showToast(label+' — moving to next step', 'success'); closeTaskWindow(winId);
+    showToast(label + ' — next step created', 'success'); closeTaskWindow(winId);
   } else if(result==='stay') {
     await updateListItem('Tasks', taskId, { Notes:note+': '+notes });
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
