@@ -491,7 +491,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1.4fr 90px 160px 110px 120px 110px 80px;
+  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 110px 100px 70px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -502,7 +502,7 @@ body::after {
 }
 .task-row-header {
   display: grid;
-  grid-template-columns: 1.4fr 90px 160px 110px 120px 110px 80px;
+  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 110px 100px 70px;
   gap: 12px;
   padding: 7px 18px;
   font-size: 10px;
@@ -1170,6 +1170,8 @@ body::after {
       <div class="th-col" onclick="sortTasks('TTNumber')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">TT # <span id="sort-TTNumber"></span></div>
       <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission Type <span id="sort-ParentMission"></span></div>
       <div class="th-col" onclick="sortTasks('TaskStatus')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Status <span id="sort-TaskStatus"></span></div>
+      <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Class</div>
+      <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Company</div>
       <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Action Status</div>
       <div class="th-col" style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em">Assigned To</div>
       <div class="th-col" onclick="sortTasks('age')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Age <span id="sort-age"></span></div>
@@ -1224,6 +1226,16 @@ body::after {
           <option value="In Progress">In Progress</option>
           <option value="Resolved">Resolved</option>
           <option value="Closed">Closed</option>
+        </select>
+      </div>
+      <!-- MISSION TYPE -->
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap;">Type</label>
+        <select class="status-select" id="typeSelect" onclick="event.stopPropagation()" onchange="event.stopPropagation();changeMissionType(this.value)" style="flex:1">
+          <option value="">— Set Mission Type —</option>
+          <option value="Bids Needed">Bids Needed</option>
+          <option value="Generic">Generic</option>
+          <option value="Trace Ticket Progress">Trace Ticket Progress</option>
         </select>
       </div>
     </div>
@@ -1493,7 +1505,7 @@ function cardHtml(m, idx) {
     <div class="card-stripe s-${uc}"></div>
     <div class="card-hdr">
       <div class="card-top">
-        <div class="card-title">${esc((m.Title||'—').replace(/^Urgent:\s*/i,'').replace(/^TT-\d+\s*[—-]?\s*/,'').trim()||'—')}</div>
+        <div class="card-title">${esc(m.MissionType ? m.MissionType + (m.TTNumber ? ' ' + m.TTNumber : '') : (m.Title||'—').replace(/^Urgent:\s*/i,'').replace(/^TT-\d+\s*[—-]?\s*/,'').trim()||'—')}</div>
         <div class="ubadge ub-${uc}">${esc(m.Urgency?m.Urgency.split(' ')[0]:'P?')}</div>
       </div>
       <div class="card-meta">
@@ -1578,6 +1590,23 @@ function sortTasks(col) {
   renderPool();
 }
 
+// Parse person task info from Notes field
+function parsePersonNotes(notes) {
+  const result = { company: '', userClass: '', phone: '', email: '', specialty: '' };
+  if(!notes) return result;
+  notes.split('|').forEach(part => {
+    const [k, ...v] = part.trim().split(':');
+    const key = (k||'').trim().toLowerCase();
+    const val = v.join(':').trim();
+    if(key==='company') result.company = val;
+    else if(key==='class') result.userClass = val;
+    else if(key==='phone') result.phone = val;
+    else if(key==='email') result.email = val;
+    else if(key==='specialty') result.specialty = val;
+  });
+  return result;
+}
+
 function renderPool() {
   let tasks = allTasks.filter(t => !t.ClosingTask && t.TaskStatus !== 'Completed');
   // Filter
@@ -1625,12 +1654,16 @@ function renderPool() {
     const actionStatus = latestAction ? (latestAction.Title||'').replace(/^Action \d+[A-Z]?\s*—\s*/,'').substring(0,20) : '—';
     const actionStatusCls = latestAction?.ActionStatus==='Completed'?'color:var(--text-muted)':latestAction?.ActionStatus==='In Progress'?'color:var(--teal)':'color:var(--text-dim)';
     const ttNum = parentMission ? (parentMission.TTNumber||'—') : '—';
-    const missionType = mName.replace(/^Urgent:\s*/i,'').replace(/^Generic:\s*/i,'').split('—')[0].trim().substring(0,25);
+    const missionType = (parentMission?.MissionType) || mName.replace(/^Urgent:\s*/i,'').replace(/^Generic:\s*/i,'').split('—')[0].trim().substring(0,22);
+    const personInfo = parsePersonNotes(t.Notes||'');
+    const isPersonTask = (t.TaskType==='New Lead'||t.TaskType==='Approved Contact');
     return `<div class="task-row" style="animation-delay:${i*0.03}s;cursor:pointer" onclick="event.stopPropagation();openTaskCard(${tJson},${mJson||'null'})">
       <div class="tn">${esc(t.Title||'—')}</div>
       <div class="tm" style="font-weight:700;font-family:monospace;font-size:13px">${esc(ttNum)}</div>
       <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(missionType||mName)}</div>
       <div><span class="ts-pill ${statusCls}">${esc(t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
+      <div style="font-size:11px;font-weight:700;color:var(--teal);text-align:center">${isPersonTask?esc(personInfo.userClass||'—'):'—'}</div>
+      <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--light-text)">${isPersonTask?esc(personInfo.company||'—'):'—'}</div>
       <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${actionStatusCls}">${esc(actionStatus)}</div>
       <div class="ta-assigned" style="font-size:11px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(assigned)}</div>
       <div class="ta${age!==null&&age>4?' urgent':''}">${age!==null?age+'h ago':'—'}</div>
@@ -1649,7 +1682,7 @@ function openDetail(m) {
 
   // stripe
   document.getElementById('mpStripe').className = `mp-stripe s-${uc}`;
-  document.getElementById('mpTitle').textContent = m.Title || '—';
+  document.getElementById('mpTitle').textContent = m.MissionType ? m.MissionType + (m.TTNumber ? ' ' + m.TTNumber : '') : (m.Title || '—');
 
   // badges
   document.getElementById('mpBadges').innerHTML = `
@@ -1661,6 +1694,10 @@ function openDetail(m) {
   // status select
   const sel = document.getElementById('statusSelect');
   sel.value = m.MissionStatus || 'New';
+  const typeSel = document.getElementById('typeSelect');
+  if(typeSel) typeSel.value = m.MissionType || '';
+  // Update mission title based on type + TT number
+  updateMissionTitle(m);
 
   // hold button
   const holdBtn = document.getElementById('holdBtn');
@@ -1722,17 +1759,55 @@ function openDetail(m) {
       <div class="mp-sec-label">Tasks (${tasks.length}) <span id="addTaskToggle" onclick="event.stopPropagation();openAddTask()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;">+ Add Task</span></div>
       <div id="addTaskForm" class="add-task-form">
         <div class="form-row">
-          <label class="form-label">Task Title</label>
-          <input class="form-input" id="newTaskTitle" placeholder="Describe the task..." />
-        </div>
-        <div class="form-row">
           <label class="form-label">Task Type</label>
-          <select class="form-select" id="newTaskType">
+          <select class="form-select" id="newTaskType" onchange="event.stopPropagation();togglePersonFields(this.value)">
             <option value="New Lead">New Lead</option>
+            <option value="Approved Contact">Approved Contact</option>
             <option value="Bulk Leads">Bulk Leads</option>
             <option value="Generic">Generic</option>
-            <option value="Approved Contact">Approved Contact</option>
           </select>
+        </div>
+        <!-- Person fields for New Lead / Approved Contact -->
+        <div id="personFields">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="form-row" style="margin:0">
+              <label class="form-label">Name <span style="color:var(--red)">*</span></label>
+              <input class="form-input" id="ntPersonName" placeholder="Full name..." onclick="event.stopPropagation()" />
+            </div>
+            <div class="form-row" style="margin:0">
+              <label class="form-label">Phone <span style="color:var(--red)">*</span></label>
+              <input class="form-input" id="ntPhone" placeholder="Phone number..." onclick="event.stopPropagation()" />
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div class="form-row" style="margin:0">
+              <label class="form-label">Company Name <span style="color:var(--red)">*</span></label>
+              <input class="form-input" id="ntCompany" placeholder="Company..." onclick="event.stopPropagation()" />
+            </div>
+            <div class="form-row" style="margin:0">
+              <label class="form-label">User Class <span style="color:var(--red)">*</span></label>
+              <select class="form-select" id="ntUserClass" onclick="event.stopPropagation()">
+                <option value="">— Select —</option>
+                <option value="GIG">GIG</option>
+                <option value="ISO">ISO</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div class="form-row" style="margin:0">
+              <label class="form-label">Email</label>
+              <input class="form-input" id="ntEmail" placeholder="Email address..." onclick="event.stopPropagation()" />
+            </div>
+            <div class="form-row" style="margin:0">
+              <label class="form-label">Specialty</label>
+              <input class="form-input" id="ntSpecialty" placeholder="e.g. MRI, CT, X-Ray..." onclick="event.stopPropagation()" />
+            </div>
+          </div>
+        </div>
+        <!-- Generic task title (non-person types) -->
+        <div id="genericTitleField" style="display:none" class="form-row">
+          <label class="form-label">Task Title <span style="color:var(--red)">*</span></label>
+          <input class="form-input" id="newTaskTitle" placeholder="Describe the task..." onclick="event.stopPropagation()" />
         </div>
         <div class="form-btns">
           <button class="btn-save" onclick="event.stopPropagation();saveNewTask()">Save Task</button>
@@ -2807,6 +2882,25 @@ function toggleAcc(id, event) {
 // ===============================
 // ACTIONS
 // ===============================
+function updateMissionTitle(m) {
+  const title = m.MissionType ? m.MissionType + (m.TTNumber ? ' ' + m.TTNumber : '') : (m.Title || '—');
+  document.getElementById('mpTitle').textContent = title;
+}
+
+async function changeMissionType(val) {
+  if(!currentMission || !siteId) return;
+  try {
+    await updateListItem('Missions', currentMission.id, { MissionType: val });
+    currentMission.MissionType = val;
+    updateMissionTitle(currentMission);
+    // Also update the card title in the grid
+    await loadData();
+    const updated = allMissions.find(m => m.id === currentMission.id);
+    if(updated) { currentMission = updated; }
+    showToast('Mission type updated', 'success');
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
 async function changeStatus(val) {
   if(!currentMission || !siteId) return;
   try {
@@ -2850,25 +2944,58 @@ function closeAddTask() {
   document.getElementById('newTaskTitle').value = '';
 }
 
+function togglePersonFields(type) {
+  const isPersonType = (type === 'New Lead' || type === 'Approved Contact');
+  document.getElementById('personFields').style.display = isPersonType ? '' : 'none';
+  document.getElementById('genericTitleField').style.display = isPersonType ? 'none' : '';
+}
+
 async function saveNewTask() {
   if(!currentMission || !siteId) return;
-  const title = document.getElementById('newTaskTitle').value.trim();
-  const type  = document.getElementById('newTaskType').value;
-  if(!title) { showToast('Please enter a task title', 'error'); return; }
+  const type = document.getElementById('newTaskType').value;
+  const isPersonType = (type === 'New Lead' || type === 'Approved Contact');
+
+  let title, notes = '';
+
+  if(isPersonType) {
+    const name     = (document.getElementById('ntPersonName')?.value||'').trim();
+    const phone    = (document.getElementById('ntPhone')?.value||'').trim();
+    const company  = (document.getElementById('ntCompany')?.value||'').trim();
+    const userClass= document.getElementById('ntUserClass')?.value||'';
+    const email    = (document.getElementById('ntEmail')?.value||'').trim();
+    const specialty= (document.getElementById('ntSpecialty')?.value||'').trim();
+
+    if(!name)      { showToast('Name is required', 'error'); return; }
+    if(!phone)     { showToast('Phone is required', 'error'); return; }
+    if(!company)   { showToast('Company name is required', 'error'); return; }
+    if(!userClass) { showToast('User class is required', 'error'); return; }
+
+    // Task name = "Type-Name" e.g. "New Lead-Jason Mobley"
+    title = type + '-' + name;
+
+    // Pack person info into Notes for retrieval later
+    const parts = ['Phone: '+phone, 'Company: '+company, 'Class: '+userClass];
+    if(email)    parts.push('Email: '+email);
+    if(specialty) parts.push('Specialty: '+specialty);
+    notes = parts.join(' | ');
+
+  } else {
+    title = (document.getElementById('newTaskTitle')?.value||'').trim();
+    if(!title) { showToast('Please enter a task title', 'error'); return; }
+  }
 
   try {
     await createListItem('Tasks', {
       Title: title,
       TaskType: type,
       TaskStatus: 'Unassigned',
-      PauseStatus: 'Active',
       ClosingTask: false,
       ParentMissionLookupId: currentMission.id,
+      Notes: notes || undefined,
     });
     showToast('Task created', 'success');
     closeAddTask();
     await loadData();
-    // Re-open detail with refreshed data
     const updated = allMissions.find(m => m.id === currentMission.id);
     if(updated) openDetail(updated);
   } catch(e) { showToast(e.message, 'error'); }
