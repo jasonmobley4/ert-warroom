@@ -671,8 +671,8 @@ body::after {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.12);
+  border-bottom: 2px solid var(--border-hi);
+  background: rgba(0,0,0,0.18);
 }
 
 .action-btn {
@@ -722,19 +722,29 @@ body::after {
 .status-select:focus { outline: none; border-color: var(--teal); }
 
 /* ── PANEL SECTIONS ── */
-.mp-body { padding: 0 24px 28px; }
+.mp-body { padding: 0 0 28px; }
 
-.mp-section { margin-top: 20px; }
+.mp-section { margin: 0; }
+
+/* Major section blocks — full-width bands with distinct backgrounds */
+.mp-band {
+  padding: 18px 24px;
+  border-bottom: 2px solid var(--border-hi);
+}
+.mp-band-actions  { background: rgba(0,0,0,0.18); }
+.mp-band-info     { background: var(--navy-card); }
+.mp-band-tasks    { background: rgba(56,190,201,0.04); border-top: 2px solid rgba(56,190,201,0.15); border-bottom: 2px solid rgba(56,190,201,0.15); }
+.mp-band-log      { background: rgba(255,255,255,0.02); }
 
 .mp-sec-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  color: var(--text-muted);
+  color: var(--teal);
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 10px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.16em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(56,190,201,0.2);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1241,6 +1251,9 @@ body::after {
     </div>
 
     <!-- ACTION BUTTONS -->
+    <div style="padding:8px 24px 4px;background:rgba(0,0,0,0.18);border-bottom:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.16em">Mission Actions</div>
+    </div>
     <div class="mp-actions" id="mpActions">
       <button class="action-btn warning" id="holdBtn" onclick="event.stopPropagation();toggleHold()">⏸ Put On Hold</button>
       <button class="action-btn primary" onclick="event.stopPropagation();openAddTask()">＋ Add Task</button>
@@ -1729,8 +1742,8 @@ function openDetail(m) {
 
   document.getElementById('mpBody').innerHTML = `
 
-    <!-- Mission Info -->
-    <div class="mp-section">
+    <!-- ═══ MISSION INFO BAND ═══ -->
+    <div class="mp-band mp-band-info">
       <div class="mp-sec-label">Mission Info</div>
       <div class="mp-fields">
         <div><div class="mp-field-lbl">TT Number</div><div class="mp-field-val mono">${esc(m.TTNumber||'—')}</div></div>
@@ -1740,42 +1753,58 @@ function openDetail(m) {
         <div><div class="mp-field-lbl">Location</div><div class="mp-field-val">${esc(m.LocationName||'—')}</div></div>
         <div><div class="mp-field-lbl">City / State</div><div class="mp-field-val">${esc(m.LocationCityStateZip||'—')}</div></div>
       </div>
-    </div>
 
-    <!-- Asset -->
-    <div class="mp-section">
-      <div class="accordion" id="acc-asset">
-        <button class="acc-trigger" onclick="toggleAcc('acc-asset',event)">Asset Details <span class="acc-chev">›</span></button>
-        <div class="acc-body">
-          <div class="mp-fields">
-            <div><div class="mp-field-lbl">Asset ID</div><div class="mp-field-val mono">${esc(m.AssetType||'—')}</div></div>
-            <div><div class="mp-field-lbl">OEM</div><div class="mp-field-val">${esc(m.AssetOEM||'—')}</div></div>
-            <div class="mp-field-full"><div class="mp-field-lbl">Model</div><div class="mp-field-val">${esc(m.AssetModel||'—')}</div></div>
+      <!-- Asset Details (collapsed) -->
+      <div class="mp-section" style="margin-top:14px">
+        <div class="accordion" id="acc-asset">
+          <button class="acc-trigger" onclick="toggleAcc('acc-asset',event)">Asset Details <span class="acc-chev">›</span></button>
+          <div class="acc-body">
+            <div class="mp-fields">
+              <div><div class="mp-field-lbl">Asset ID</div><div class="mp-field-val mono">${esc(m.AssetType||'—')}</div></div>
+              <div><div class="mp-field-lbl">OEM</div><div class="mp-field-val">${esc(m.AssetOEM||'—')}</div></div>
+              <div class="mp-field-full"><div class="mp-field-lbl">Model</div><div class="mp-field-val">${esc(m.AssetModel||'—')}</div></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Reported Problem -->
-    <div class="mp-section">
-      <div class="accordion" id="acc-rp">
-        <button class="acc-trigger" onclick="toggleAcc('acc-rp',event)">Reported Problem <span class="acc-chev">›</span></button>
-        <div class="acc-body">
-          <div class="mp-fields">
-            <div><div class="mp-field-lbl">Request Type</div><div class="mp-field-val">${esc(m.RPRequestType||'—')}</div></div>
-            <div><div class="mp-field-lbl">Problem Type</div><div class="mp-field-val">${esc(m.RPProblemType||'—')}</div></div>
-            <div><div class="mp-field-lbl">Repeated Problem</div><div class="mp-field-val">${esc(m.RPRepeatedProblem||'—')}</div></div>
-            <div><div class="mp-field-lbl">Asset State</div><div class="mp-field-val">${esc(m.RPAssetCurrentState||'—')}</div></div>
-            <div class="mp-field-full"><div class="mp-field-lbl">Symptoms</div><div class="mp-field-val">${esc(m.RPSymptoms||'—')}</div></div>
-            <div class="mp-field-full"><div class="mp-field-lbl">Additional Info</div><div class="mp-field-val">${esc(m.RPAdditionalInfo||'—')}</div></div>
+      <!-- Reported Problem (collapsed) -->
+      <div class="mp-section" style="margin-top:10px">
+        <div class="accordion" id="acc-rp">
+          <button class="acc-trigger" onclick="toggleAcc('acc-rp',event)">Reported Problem <span class="acc-chev">›</span></button>
+          <div class="acc-body">
+            <div class="mp-fields">
+              <div><div class="mp-field-lbl">Request Type</div><div class="mp-field-val">${esc(m.RPRequestType||'—')}</div></div>
+              <div><div class="mp-field-lbl">Problem Type</div><div class="mp-field-val">${esc(m.RPProblemType||'—')}</div></div>
+              <div><div class="mp-field-lbl">Repeated Problem</div><div class="mp-field-val">${esc(m.RPRepeatedProblem||'—')}</div></div>
+              <div><div class="mp-field-lbl">Asset State</div><div class="mp-field-val">${esc(m.RPAssetCurrentState||'—')}</div></div>
+              <div class="mp-field-full"><div class="mp-field-lbl">Symptoms</div><div class="mp-field-val">${esc(m.RPSymptoms||'—')}</div></div>
+              <div class="mp-field-full"><div class="mp-field-lbl">Additional Info</div><div class="mp-field-val">${esc(m.RPAdditionalInfo||'—')}</div></div>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Matched Technicians — moved here, inside Mission Info band -->
+      ${techs.length ? `
+      <div class="mp-section" style="margin-top:10px">
+        <div class="accordion" id="acc-tech">
+          <button class="acc-trigger" onclick="toggleAcc('acc-tech',event)">Matched Technicians (${techs.length}) <span class="acc-chev">›</span></button>
+          <div class="acc-body">
+            ${techs.map(t=>`
+              <div class="tech-row">
+                <div class="tech-name">${esc(t.name||'—')}</div>
+                <div class="tech-type">${esc(t.type||'')}</div>
+                <div class="tech-co">${esc(t.company||'—')}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>` : ''}
     </div>
 
-    <!-- Tasks -->
-    <div class="mp-section">
-      <div class="mp-sec-label">Tasks (${tasks.length}) <span id="addTaskToggle" onclick="event.stopPropagation();openAddTask()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;">+ Add Task</span></div>
+    <!-- ═══ TASKS BAND ═══ -->
+    <div class="mp-band mp-band-tasks">
+      <div class="mp-sec-label">Tasks (${tasks.length}) <span id="addTaskToggle" onclick="event.stopPropagation();openAddTask()" style="cursor:pointer;color:var(--teal);font-size:10px;font-weight:700;letter-spacing:0">+ Add Task</span></div>
       <div id="addTaskForm" class="add-task-form">
         <div class="form-row">
           <label class="form-label">Task Type</label>
@@ -1846,8 +1875,8 @@ function openDetail(m) {
       </div>
     </div>
 
-    <!-- Action Log -->
-    <div class="mp-section">
+    <!-- ═══ ACTION LOG BAND ═══ -->
+    <div class="mp-band mp-band-log">
       <div class="mp-sec-label">Action Log / Notes</div>
       <div id="actionLog">
         ${m.MissionNotes ? `<div class="log-entry"><div class="log-dot"></div><div class="log-content"><div class="log-text">${esc(m.MissionNotes)}</div><div class="log-time">From mission record</div></div></div>` : '<div style="padding:12px 0;font-size:11px;color:var(--text-muted);">No notes yet.</div>'}
@@ -1857,22 +1886,6 @@ function openDetail(m) {
         <button class="btn-log" onclick="event.stopPropagation();addLogEntry()">Add Note</button>
       </div>
     </div>
-
-    <!-- Matched Technicians -->
-    ${techs.length ? `
-    <div class="mp-section">
-      <div class="accordion" id="acc-tech">
-        <button class="acc-trigger" onclick="toggleAcc('acc-tech',event)">Matched Technicians (${techs.length}) <span class="acc-chev">›</span></button>
-        <div class="acc-body">
-          ${techs.map(t=>`
-            <div class="tech-row">
-              <div class="tech-name">${esc(t.name||'—')}</div>
-              <div class="tech-type">${esc(t.type||'')}</div>
-              <div class="tech-co">${esc(t.company||'—')}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>` : ''}
   `;
 
   document.getElementById('modalOverlay').classList.remove('hidden');
