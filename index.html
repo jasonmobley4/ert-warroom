@@ -2840,15 +2840,23 @@ async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle, i
   const notes = (document.getElementById(winId+'_action_notes')?.value||'').trim();
   if(!notes && !isScheduler) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  try {
-    const oa = await createListItem('Actions', { Title:`Action — ${label}`, ParentTaskLookupId:parseInt(taskId) });
-    if(oa && oa.id) await gPatch(`/sites/${siteId}/lists/Actions/items/${oa.id}/fields`, { field_2:'Completed', field_6:`[${timestamp}] ${notes}` });
-  } catch(e) { console.warn(e); }
+
+  // Mark the current auto-created action item as Completed so progress detector moves forward
+  const taskActions = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId));
+  const outcomeActions = taskActions.filter(a => a.Title && !a.Title.match(/^Attempt \d/));
+  const currentIncomplete = [...outcomeActions].sort((a,b)=>parseInt(a.id)-parseInt(b.id))
+    .find(a => (a.field_2||a.ActionStatus) !== 'Completed');
+  if(currentIncomplete) {
+    try {
+      await gPatch('/sites/'+siteId+'/lists/Actions/items/'+currentIncomplete.id+'/fields',
+        { field_2:'Completed', field_6:'['+timestamp+'] '+label+(notes?' | '+notes:'') });
+    } catch(e) { console.warn('Mark complete failed:', e); }
+  }
+
   if(result==='close_success'||result==='close_fail') {
     { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
-    showToast(result==='close_success'?'Task closed — success ✓':'Task closed — '+label, 'success'); closeTaskWindow(winId);
+    showToast(result==='close_success'?'Task closed — success checked':'Task closed — '+label, 'success'); closeTaskWindow(winId);
   } else if(result==='next' || result==='next_skip') {
-    // nextTitle passed as 6th argument from outcome button
     const nt = nextTitle || null;
     if(nt) {
       try {
@@ -2862,9 +2870,9 @@ async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle, i
     { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
   }
-  // Legacy next_ result handlers removed — handled by 'next'/'next_skip' with nextTitle
   await loadData();
 }
+
 
 async function tcCompleteWin(winId, taskId) {
   const notes = (document.getElementById(winId+'_generic_notes')?.value||'').trim();
