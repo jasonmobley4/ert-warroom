@@ -1931,68 +1931,111 @@ function memberSelectHtml(selectedEmail) {
 // WORKFLOW ENGINE
 // ===============================
 const WF_NEW_LEAD = {
+  // Action numbering: 1, '2-1', '2-2', '3-1', '3-2'
+  // Title pattern used to match auto-created SP items:
+  //   "Action 2-1 — Onboarding Scheduler"
+  //   "Action 2-2 — Onboarding Results"
+  //   "Action 3-1 — Training Scheduler"
+  //   "Action 3-2 — Training Results"
   actions: [
-    { num: 1, name: 'Make Contact', taskStatus: 'Contacting', isContactLog: true,
-      fields: ['contact_attempts','notes'],
+    // ─── ACTION 1: Make Contact (repeatable attempt log) ───────────────────
+    {
+      num: 1,
+      name: 'Make Contact',
+      taskStatus: 'Contacting',
+      isContactLog: true,
       attemptOutcomes: {
-        Phone: ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
-        Email: ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
-        Text: ['Reply received','No reply','Delivered','Failed to deliver'],
+        Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
+        Email:       ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
+        Text:        ['Reply received','No reply','Delivered','Failed to deliver'],
         'In person': ['Contacted','Not available','Referred to another contact'],
       },
       finalOutcomes: [
-        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Cannot Contact', style: 'warning', result: 'close_fail', note: 'Closed — unable to reach' },
-        { label: 'Interested → Proceed to Onboarding', style: 'success', result: 'next', note: 'Contact made — moving to onboarding' },
+        { label: 'Not Interested',                   style: 'danger',  result: 'close_fail',  note: 'Closed — not interested' },
+        { label: 'Cannot Contact',                   style: 'warning', result: 'close_fail',  note: 'Closed — unable to reach' },
+        { label: 'Interested → Schedule Onboarding', style: 'success', result: 'next',        note: 'Contact made — moving to onboarding scheduler',
+          nextTitle: 'Action 2-1 — Onboarding Scheduler' },
       ]
     },
-    { num: 2, name: 'Onboarding', taskStatus: 'Onboarding',
-      fields: ['meeting_scheduled','notes'],
+
+    // ─── ACTION 2-1: Onboarding Scheduler ─────────────────────────────────
+    {
+      num: '2-1',
+      name: 'Onboarding Scheduler',
+      taskStatus: 'Scheduling Onboarding',
+      autocreated: true,
+      fields: ['meeting_scheduled', 'notes'],
       outcomes: [
-        { label: 'Not Interested', style: 'danger', result: 'close_fail', note: 'Closed — not interested' },
-        { label: 'Did Not Proceed', style: 'danger', result: 'close_fail', note: 'Closed — did not proceed' },
-        { label: 'Onboarded', style: 'success', result: 'next', note: 'Onboarded — moving to training' },
+        { label: 'Not Interested',    style: 'danger',  result: 'close_fail',    note: 'Closed — not interested after scheduling',
+          nextTitle: null },
+        { label: 'Already Onboarded', style: 'warning', result: 'next_skip',     note: 'Already onboarded — moving to training',
+          nextTitle: 'Action 3-1 — Training Scheduler' },
+        { label: 'Onboarding Scheduled', style: 'success', result: 'next',       note: 'Onboarding scheduled — awaiting results',
+          nextTitle: 'Action 2-2 — Onboarding Results' },
       ]
     },
-    { num: 3, name: 'Training', taskStatus: 'Training', optional: true,
-      fields: ['training_date','training_method','modules_completed','notes'],
+
+    // ─── ACTION 2-2: Onboarding Results ───────────────────────────────────
+    {
+      num: '2-2',
+      name: 'Onboarding Results',
+      taskStatus: 'Onboarding',
+      autocreated: true,
+      fields: ['notes'],
       outcomes: [
-        { label: 'Training Complete', style: 'success', result: 'close_success', note: 'Closed — success' },
-        { label: 'No Training Needed', style: 'success', result: 'close_success', note: 'Closed — success (no training)' },
-        { label: 'Rescheduled', style: 'warning', result: 'stay', note: 'Training rescheduled' },
+        { label: 'Did Not Proceed',  style: 'danger',  result: 'close_fail',  note: 'Closed — did not proceed after onboarding',
+          nextTitle: null },
+        { label: 'Onboarded',        style: 'success', result: 'next',        note: 'Onboarded — moving to training',
+          nextTitle: 'Action 3-1 — Training Scheduler' },
       ]
-    }
+    },
+
+    // ─── ACTION 3-1: Training Scheduler ───────────────────────────────────
+    {
+      num: '3-1',
+      name: 'Training Scheduler',
+      taskStatus: 'Scheduling Training',
+      autocreated: true,
+      fields: ['training_date', 'notes'],
+      outcomes: [
+        { label: 'Not Interested',      style: 'danger',  result: 'close_fail',    note: 'Closed — not interested after training scheduling',
+          nextTitle: null },
+        { label: 'No Training Needed',  style: 'warning', result: 'close_success', note: 'Closed — success (no training needed)',
+          nextTitle: null },
+        { label: 'Training Scheduled',  style: 'success', result: 'next',          note: 'Training scheduled — awaiting results',
+          nextTitle: 'Action 3-2 — Training Results' },
+      ]
+    },
+
+    // ─── ACTION 3-2: Training Results ─────────────────────────────────────
+    {
+      num: '3-2',
+      name: 'Training Results',
+      taskStatus: 'Training',
+      autocreated: true,
+      fields: ['notes'],
+      outcomes: [
+        { label: 'Did Not Complete',  style: 'danger',  result: 'close_fail',    note: 'Closed — did not complete training',
+          nextTitle: null },
+        { label: 'Training Complete', style: 'success', result: 'close_success', note: 'Closed — success, training complete',
+          nextTitle: null },
+      ]
+    },
   ]
 };
 
 const WF_APPROVED_CONTACT = {
+  // Approved Contact = existing DTT member. Goal: get them to log in and bid.
+  // No onboarding needed. Training possible if they need a refresher.
+  // Action numbering: 1, '2-1', '2-2', '3-1', '3-2'
   actions: [
-    // Action 1: Contact attempt log (same repeatable pattern as New Lead)
-    // These are existing members — goal is to get them to log in and bid
-    { num: 1, name: 'Make Contact', taskStatus: 'Contacting',
-      isContactLog: true,
-      fields: ['contact_attempts', 'notes'],
-      attemptOutcomes: {
-        Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
-        Email:       ['Sent, awaiting reply','Reply received','No reply','Bounced','Out of office reply'],
-        Text:        ['Reply received','No reply','Delivered','Failed to deliver'],
-        'In person': ['Contacted','Not available','Referred to another contact'],
-      },
-      finalOutcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
-          note: 'Closed — member not bidding on this ticket' },
-        { label: 'Cannot Contact', style: 'warning', result: 'close_fail',
-          note: 'Closed — unable to reach member' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success',
-          note: 'Closed — member bid placed successfully' },
-        { label: 'Will Bid Later → Log Follow-up', style: 'info', result: 'next_2a',
-          note: 'Member will bid later — follow-up scheduled' },
-        { label: 'Needs Training → Schedule Training', style: 'info', result: 'next_2b',
-          note: 'Member needs training — training action created' },
-      ]
-    },
-    // Action 2A: Follow-up (auto-created when member says they will bid later)
-    { num: '2A', name: 'Follow-up — Confirm Bid', taskStatus: 'Awaiting Bid', autocreated: true,
+
+    // ─── ACTION 1: Make Contact (repeatable attempt log) ───────────────────
+    // Same contact log pattern as New Lead
+    {
+      num: 1,
+      name: 'Make Contact',
+      taskStatus: 'Contacting',
       isContactLog: true,
       attemptOutcomes: {
         Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
@@ -2001,26 +2044,49 @@ const WF_APPROVED_CONTACT = {
         'In person': ['Contacted','Not available','Referred to another contact'],
       },
       finalOutcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
-          note: 'Closed — member not bidding' },
-        { label: 'Cannot Contact', style: 'warning', result: 'close_fail',
-          note: 'Closed — unable to reach for follow-up' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success',
-          note: 'Closed — member bid placed successfully' },
+        { label: 'Not Bidding',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding',
+          nextTitle: null },
+        { label: 'Cannot Contact',
+          style: 'warning', result: 'close_fail',    note: 'Closed — unable to reach member',
+          nextTitle: null },
+        { label: 'Bid Placed',
+          style: 'success', result: 'close_success', note: 'Closed — bid placed successfully',
+          nextTitle: null },
+        { label: 'Will Bid Later → Schedule Follow-up',
+          style: 'info',    result: 'next',          note: 'Member will bid later — follow-up created',
+          nextTitle: 'Action 2-1 — Bid Follow-up Scheduler' },
+        { label: 'Needs Training → Schedule Training',
+          style: 'info',    result: 'next',          note: 'Member needs training — training created',
+          nextTitle: 'Action 3-1 — Training Scheduler' },
       ]
     },
-    // Action 2B: Training (auto-created when member needs training)
-    { num: '2B', name: 'Training Session', taskStatus: 'Training', autocreated: true,
-      fields: ['training_date','training_method','notes'],
+
+    // ─── ACTION 2-1: Bid Follow-up Scheduler ─────────────────────────────
+    // Schedule the follow-up call/meeting to confirm member placed bid
+    {
+      num: '2-1',
+      name: 'Bid Follow-up Scheduler',
+      taskStatus: 'Scheduling Follow-up',
+      autocreated: true,
+      fields: ['followup_date', 'notes'],
       outcomes: [
-        { label: 'Training Complete — Bid Expected', style: 'success', result: 'next_3',
-          note: 'Training done — follow-up bid confirmation created' },
-        { label: 'Not Bidding After Training', style: 'danger', result: 'close_fail',
-          note: 'Closed — member declined after training' },
+        { label: 'Not Bidding',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding',
+          nextTitle: null },
+        { label: 'Follow-up Scheduled',
+          style: 'success', result: 'next',          note: 'Follow-up scheduled — awaiting bid confirmation',
+          nextTitle: 'Action 2-2 — Bid Confirmation' },
       ]
     },
-    // Action 3: Final bid confirmation after training
-    { num: 3, name: 'Confirm Bid After Training', taskStatus: 'Awaiting Bid', autocreated: true, final: true,
+
+    // ─── ACTION 2-2: Bid Confirmation (contact log) ───────────────────────
+    // Follow up to confirm member actually placed the bid
+    {
+      num: '2-2',
+      name: 'Bid Confirmation',
+      taskStatus: 'Awaiting Bid',
+      autocreated: true,
       isContactLog: true,
       attemptOutcomes: {
         Phone:       ['Answered','No answer','Left voicemail','Wrong number','Line disconnected'],
@@ -2029,12 +2095,56 @@ const WF_APPROVED_CONTACT = {
         'In person': ['Contacted','Not available','Referred to another contact'],
       },
       finalOutcomes: [
-        { label: 'Not Bidding', style: 'danger', result: 'close_fail',
-          note: 'Closed — member not bidding after training' },
-        { label: 'Bid Placed', style: 'success', result: 'close_success',
-          note: 'Closed — member bid placed successfully' },
+        { label: 'Not Bidding',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding on follow-up',
+          nextTitle: null },
+        { label: 'Cannot Contact',
+          style: 'warning', result: 'close_fail',    note: 'Closed — unable to reach on follow-up',
+          nextTitle: null },
+        { label: 'Bid Placed',
+          style: 'success', result: 'close_success', note: 'Closed — bid placed successfully',
+          nextTitle: null },
       ]
-    }
+    },
+
+    // ─── ACTION 3-1: Training Scheduler ──────────────────────────────────
+    // Schedule a training session for the member
+    {
+      num: '3-1',
+      name: 'Training Scheduler',
+      taskStatus: 'Scheduling Training',
+      autocreated: true,
+      fields: ['training_date', 'notes'],
+      outcomes: [
+        { label: 'Not Bidding',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding after training request',
+          nextTitle: null },
+        { label: 'No Training Needed',
+          style: 'warning', result: 'next',          note: 'No training needed — scheduling bid follow-up',
+          nextTitle: 'Action 2-1 — Bid Follow-up Scheduler' },
+        { label: 'Training Scheduled',
+          style: 'success', result: 'next',          note: 'Training scheduled — awaiting results',
+          nextTitle: 'Action 3-2 — Training Results' },
+      ]
+    },
+
+    // ─── ACTION 3-2: Training Results ─────────────────────────────────────
+    // Record outcome of the training session
+    {
+      num: '3-2',
+      name: 'Training Results',
+      taskStatus: 'Training',
+      autocreated: true,
+      fields: ['notes'],
+      outcomes: [
+        { label: 'Not Bidding After Training',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding after training',
+          nextTitle: null },
+        { label: 'Training Complete — Schedule Bid Follow-up',
+          style: 'success', result: 'next',          note: 'Training complete — bid follow-up created',
+          nextTitle: 'Action 2-1 — Bid Follow-up Scheduler' },
+      ]
+    },
   ]
 };
 
@@ -2054,6 +2164,7 @@ function actionFieldsHtml(fields) {
     if(f === 'training_date') return `<div class="form-row"><label class="form-label">Training Date / Time</label><input class="form-input" type="datetime-local" id="af_training_date" onclick="event.stopPropagation()" /></div>`;
     if(f === 'training_method') return `<div class="form-row"><label class="form-label">Training Method</label><select class="form-input" id="af_training_method" onclick="event.stopPropagation()"><option>In person</option><option>Virtual</option><option>Self-serve</option></select></div>`;
     if(f === 'modules_completed') return `<div class="form-row"><label class="form-label">Modules Completed</label><input class="form-input" id="af_modules" placeholder="e.g. Onboarding, Compliance" onclick="event.stopPropagation()" /></div>`;
+    if(f === 'notes') return `<div class="form-row"><label class="form-label">Notes (optional)</label><textarea class="form-input" id="af_extra_notes" rows="2" style="resize:vertical" placeholder="Any additional context..." onclick="event.stopPropagation()"></textarea></div>`;
     return '';
   }).join('');
 }
@@ -2308,9 +2419,9 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
     if(incompleteOutcome) {
       const title = (incompleteOutcome.Title||'').toLowerCase();
       // Try matching by action number in title: "Action 2 —" → num 2, "Action 2A —" → num '2A'
-      const numMatch = (incompleteOutcome.Title||'').match(/^Action\s+(\w+)\s*[—\-]/i);
+      const numMatch = (incompleteOutcome.Title||'').match(/^Action\s+([\w-]+)\s*[—\-]/i);
       if(numMatch) {
-        const n = numMatch[1];
+        const n = numMatch[1]; // e.g. "2-1", "3-2", "2A"
         wfAction = wf.actions.find(wa => String(wa.num) === n);
       }
       // Fallback: match by name substring
@@ -2433,7 +2544,8 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
             <div style="display:flex;flex-wrap:wrap;gap:6px">
               ${wfAction.finalOutcomes.map(o=>{
                 const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':o.style==='info'?'action-btn primary':'action-btn warning';
-                return `<button class="${cls}" onclick="event.stopPropagation();recordFinalOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
+                const nt = o.nextTitle ? encodeURIComponent(o.nextTitle) : '';
+                return `<button class="${cls}" onclick="event.stopPropagation();recordFinalOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}',decodeURIComponent('${nt}'))">${esc(o.label)}</button>`;
               }).join('')}
             </div>
           </div>
@@ -2453,7 +2565,8 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
             <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">
               ${wfAction.outcomes.map(o=>{
                 const cls=o.style==='danger'?'action-btn danger':o.style==='success'?'action-btn success-btn':o.style==='info'?'action-btn primary':'action-btn warning';
-                return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}')">${esc(o.label)}</button>`;
+                const nt2 = o.nextTitle ? encodeURIComponent(o.nextTitle) : '';
+                return `<button class="${cls}" onclick="event.stopPropagation();recordOutcomeWin('${winId}',${t.id},'${o.result}','${esc(o.label)}','${esc(o.note)}',decodeURIComponent('${nt2}'))">${esc(o.label)}</button>`;
               }).join('')}
             </div>
           </div>
@@ -2621,7 +2734,7 @@ async function logContactAttemptWin(winId, taskId) {
   } catch(e) { showToast(e.message, 'error'); }
 }
 
-async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
+async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTitle) {
   const finalNotes = (document.getElementById(winId+'_final_notes')?.value||'').trim();
   if(!finalNotes) { showToast('Notation required', 'error'); document.getElementById(winId+'_final_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -2643,50 +2756,39 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note) {
     closeTaskWindow(winId);
 
   } else if(result==='next') {
-    // New Lead: contact made — auto-create Action 2 (Onboarding)
-    try {
-      const a2 = await createListItem('Actions', { Title:'Action 2 — Onboarding', ParentTaskLookupId:parseInt(taskId) });
-      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: contact made, moving to onboarding' });
-    } catch(e) { console.warn('Action 2 create failed:', e); }
+    // Auto-create next action using nextTitle from the outcome definition
+    // nextTitle is passed as the 6th argument from the button onclick
+    const nt = nextTitle || null;
+    if(nt) {
+      try {
+        const na = await createListItem('Actions', { Title: nt, ParentTaskLookupId:parseInt(taskId) });
+        if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
+      } catch(e) { console.warn('Next action create failed:', e); }
+    }
     await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
-    showToast('Contact made — Action 2 (Onboarding) created', 'success');
+    showToast(label + ' — next step created', 'success');
     closeTaskWindow(winId);
 
-  } else if(result==='next_2a') {
-    // Approved Contact: will bid later — create follow-up action
-    try {
-      const a2 = await createListItem('Actions', { Title:'Action 2A — Follow-up: Confirm Bid', ParentTaskLookupId:parseInt(taskId) });
-      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: member said will bid later' });
-    } catch(e) { console.warn(e); }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
-    showToast('Follow-up action created — member will bid later', 'success');
+  } else if(result==='next_skip') {
+    // Skip directly to a later step (e.g. already onboarded → go to training)
+    const nt = nextTitle || null;
+    if(nt) {
+      try {
+        const na = await createListItem('Actions', { Title: nt, ParentTaskLookupId:parseInt(taskId) });
+        if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: skipped to this step' });
+      } catch(e) { console.warn('Skip action create failed:', e); }
+    }
+    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
+    showToast(label + ' — progressed to next step', 'success');
     closeTaskWindow(winId);
 
-  } else if(result==='next_2b') {
-    // Approved Contact: needs training — create training action
-    try {
-      const a2 = await createListItem('Actions', { Title:'Action 2B — Training Session', ParentTaskLookupId:parseInt(taskId) });
-      if(a2 && a2.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a2.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: member needs training' });
-    } catch(e) { console.warn(e); }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
-    showToast('Training action created', 'success');
-    closeTaskWindow(winId);
-
-  } else if(result==='next_3') {
-    // After training: create final bid confirmation action
-    try {
-      const a3 = await createListItem('Actions', { Title:'Action 3 — Confirm Bid After Training', ParentTaskLookupId:parseInt(taskId) });
-      if(a3 && a3.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+a3.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created: follow-up after training complete' });
-    } catch(e) { console.warn(e); }
-    await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note+': '+finalNotes });
-    showToast('Bid confirmation follow-up created', 'success');
-    closeTaskWindow(winId);
   }
+  // Legacy next_2a/next_2b/next_3 handlers removed — now handled by 'next' with nextTitle
 
   await loadData();
 }
 
-async function recordOutcomeWin(winId, taskId, result, label, note) {
+async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle) {
   const notes = (document.getElementById(winId+'_action_notes')?.value||'').trim();
   if(!notes) { showToast('Notation required', 'error'); document.getElementById(winId+'_action_notes')?.focus(); return; }
   const timestamp = new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -2697,30 +2799,22 @@ async function recordOutcomeWin(winId, taskId, result, label, note) {
   if(result==='close_success'||result==='close_fail') {
     await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:note+': '+notes });
     showToast(result==='close_success'?'Task closed — success ✓':'Task closed — '+label, 'success'); closeTaskWindow(winId);
-  } else if(result==='next') {
-    // Auto-create next workflow step — determine which action number comes next
-    // by counting completed outcome actions for this task
-    const taskActs = allActions.filter(a => String(a.ParentTaskLookupId)===String(taskId)||String(a.ParentTask)===String(taskId));
-    const completedOutcomes = taskActs.filter(a => a.Title && !a.Title.match(/^Attempt \d/) && (a.field_2||a.ActionStatus)==='Completed');
-    const nextNum = completedOutcomes.length + 1;
-    // Map next number to action name
-    const nextNames = {3: 'Action 3 — Training', 4: 'Action 4 — Follow-up'};
-    const nextTitle = nextNames[nextNum] || ('Action ' + nextNum + ' — Next Step');
-    try {
-      const na = await createListItem('Actions', { Title: nextTitle, ParentTaskLookupId:parseInt(taskId) });
-      if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
-    } catch(e) { console.warn('Next action create failed:', e); }
+  } else if(result==='next' || result==='next_skip') {
+    // nextTitle passed as 6th argument from outcome button
+    const nt = nextTitle || null;
+    if(nt) {
+      try {
+        const na = await createListItem('Actions', { Title: nt, ParentTaskLookupId:parseInt(taskId) });
+        if(na && na.id) await gPatch('/sites/'+siteId+'/lists/Actions/items/'+na.id+'/fields', { field_2:'Unassigned', field_6:'Auto-created' });
+      } catch(e) { console.warn('Next action create failed:', e); }
+    }
     await updateListItem('Tasks', taskId, { TaskStatus:'In Progress', Notes:note });
     showToast(label + ' — next step created', 'success'); closeTaskWindow(winId);
   } else if(result==='stay') {
     await updateListItem('Tasks', taskId, { Notes:note+': '+notes });
     showToast('Outcome recorded — task remains open', 'success'); closeTaskWindow(winId);
-  } else if(result.startsWith('next_')) {
-    const nextName = result==='next_2a'?'Action 2A — Log Bid Outcome':result==='next_2b'?'Action 2B — Training':'Action 3 — Log Bid Outcome';
-    await createListItem('Actions', { Title:nextName, ParentTaskLookupId:parseInt(taskId) });
-    await updateListItem('Tasks', taskId, { Notes:note });
-    showToast(nextName+' created', 'success'); closeTaskWindow(winId);
   }
+  // Legacy next_ result handlers removed — handled by 'next'/'next_skip' with nextTitle
   await loadData();
 }
 
