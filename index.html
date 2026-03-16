@@ -933,7 +933,9 @@ body::after {
 .ts-unassigned { background: var(--red-soft); color: var(--red); }
 .ts-inprogress { background: var(--teal-soft); color: var(--teal); }
 .ts-paused      { background: var(--amber-soft); color: var(--amber); }
-.ts-completed   { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+.ts-completed        { background: rgba(255,255,255,0.06); color: var(--text-dim); }
+.ts-closedcomplete   { background: rgba(56,201,100,0.08); color: #38c964; border: 1px solid rgba(56,201,100,0.25); }
+.ts-closednotcomplete { background: rgba(232,69,60,0.06); color: var(--red); border: 1px solid rgba(232,69,60,0.2); }
 
 /* ── ADD TASK FORM ── */
 .add-task-form {
@@ -1548,7 +1550,7 @@ function cardHtml(m, idx) {
   const tasks = missionTasks(m);
   const unassigned = tasks.filter(t=>t.TaskStatus==='Unassigned').length;
   const active = tasks.filter(t=>t.TaskStatus==='In Progress').length;
-  const completed = tasks.filter(t=>t.TaskStatus==='Completed').length;
+  const completed = tasks.filter(t=>t.TaskStatus==='Completed'||t.TaskStatus==='Closed - Complete'||t.TaskStatus==='Closed - Not Complete').length;
   const mJson = JSON.stringify(m).replace(/"/g,'&quot;');
 
   return `<div class="card${onhold?' onhold':''}" style="animation-delay:${idx*0.04}s" onclick="openDetail(${mJson})">
@@ -1641,6 +1643,23 @@ function sortTasks(col) {
   renderPool();
 }
 
+// Read task outcome from the TaskOutcome SP field
+// Format stored: "Pass: Bid Placed" or "Fail: Not Interested"
+// Only set on Completed tasks (mission still open)
+// Closed - Complete / Closed - Not Complete don't use this — status is self-explanatory
+function getTaskOutcome(task) {
+  if(!task) return null;
+  // Only show outcome badge for Completed tasks on open missions
+  if(task.TaskStatus !== 'Completed') return null;
+  const raw = task.TaskOutcome || task.fields?.TaskOutcome || '';
+  if(!raw) return null;
+  const sep = raw.indexOf(':');
+  if(sep === -1) return null;
+  const type = raw.substring(0, sep).trim().toLowerCase() === 'pass' ? 'success' : 'fail';
+  const label = raw.substring(sep + 1).trim();
+  return { type, label };
+}
+
 // Build a Notes value that preserves person data while appending a workflow note
 // Person data is stored as "Phone: X | Company: Y | Class: Z | Email: E | Specialty: S"
 // Workflow notes are appended after a double-pipe separator "||"
@@ -1673,14 +1692,14 @@ function parsePersonNotes(notes) {
 }
 
 function renderPool() {
-  let tasks = allTasks.filter(t => !t.ClosingTask); // Completed tasks shown when 'completed' or 'all' filter selected
+  let tasks = allTasks.filter(t => !t.ClosingTask && t.TaskStatus !== 'Closed - Complete' && t.TaskStatus !== 'Closed - Not Complete'); // Closed tasks never shown
   // Filter
   if(taskFilter === 'open') tasks = tasks.filter(t => t.TaskStatus !== 'Completed');
   else if(taskFilter === 'unassigned') tasks = tasks.filter(t => t.TaskStatus === 'Unassigned');
   else if(taskFilter === 'inprogress') tasks = tasks.filter(t => t.TaskStatus === 'In Progress');
   else if(taskFilter === 'paused') tasks = tasks.filter(t => t.PauseStatus === 'Paused');
   else if(taskFilter === 'completed') tasks = tasks.filter(t => t.TaskStatus === 'Completed');
-  // 'all' shows everything including completed
+  // 'all' shows all non-closed tasks (Closed - Complete / Closed - Not Complete always hidden)
 
   // Sort
   tasks = tasks.sort((a,b) => {
@@ -1716,7 +1735,11 @@ function renderPool() {
     const assigned = t.AssignedToLookupValue || t.AssignedTo || '—';
     const tJson = JSON.stringify(t).replace(/"/g,'&quot;');
     const mJson = parentMission ? JSON.stringify(parentMission).replace(/"/g,'&quot;') : null;
-    const statusCls = t.TaskStatus==='Completed'?'ts-completed':t.TaskStatus==='In Progress'?'ts-inprogress':t.PauseStatus==='Paused'?'ts-paused':'ts-unassigned';
+    const statusCls = t.TaskStatus==='Completed'?'ts-completed':
+      t.TaskStatus==='Closed - Complete'?'ts-closedcomplete':
+      t.TaskStatus==='Closed - Not Complete'?'ts-closednotcomplete':
+      t.TaskStatus==='In Progress'?'ts-inprogress':
+      t.PauseStatus==='Paused'?'ts-paused':'ts-unassigned';
     // Get latest action for this task
     const taskActs = allActions.filter(a => String(a.ParentTaskLookupId)===String(t.id)||String(a.ParentTask)===String(t.id));
     const latestAction = taskActs.length ? taskActs[taskActs.length-1] : null;
@@ -1730,7 +1753,10 @@ function renderPool() {
       <div class="tn">${esc(t.Title||'—')}</div>
       <div class="tm" style="font-weight:700;font-family:monospace;font-size:13px">${esc(ttNum)}</div>
       <div class="tm" style="color:var(--teal);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(missionType||mName)}</div>
-      <div><span class="ts-pill ${statusCls}">${esc(t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span></div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <span class="ts-pill ${statusCls}">${esc(t.PauseStatus==='Paused'?'Paused':t.TaskStatus||'—')}</span>
+        ${(()=>{ const oc=getTaskOutcome(t); if(!oc) return ''; return `<span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;white-space:nowrap;${oc.type==='success'?'background:rgba(56,201,100,0.15);color:#38c964;':'background:rgba(232,69,60,0.12);color:#e8453c;'}">${esc(oc.label)}</span>`; })()}
+      </div>
       <div style="font-size:11px;font-weight:700;color:var(--teal);text-align:center">${isPersonTask?esc(personInfo.userClass||'—'):'—'}</div>
       <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--light-text)">${isPersonTask?esc(personInfo.company||'—'):'—'}</div>
       <div style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${actionStatusCls}">${esc(actionStatus)}</div>
@@ -1909,7 +1935,10 @@ function openDetail(m) {
               <div class="ti-name">${esc(t.Title||'—')}</div>
               <div class="ti-meta">${esc(t.TaskType||'')} · ${esc(t.AssignedToLookupValue||t.AssignedTo||'Unassigned')}</div>
             </div>
-            <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}">${esc(t.TaskStatus||'—')}</span>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+              <span class="ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/[\s-]/g,'')}">${esc(t.TaskStatus||'—')}</span>
+              ${(()=>{ const oc=getTaskOutcome(t); if(!oc) return ''; return `<span style="font-size:8px;font-weight:700;padding:1px 5px;border-radius:8px;white-space:nowrap;${oc.type==='success'?'background:rgba(56,201,100,0.15);color:#38c964;':'background:rgba(232,69,60,0.12);color:#e8453c;'}">${esc(oc.label)}</span>`; })()}
+            </div>
           </div>`).join('')
         : '<div class="empty-state" style="padding:20px;"><div class="empty-text">No Tasks Yet</div></div>'}
       </div>
@@ -2099,20 +2128,20 @@ const WF_APPROVED_CONTACT = {
         'In person': ['Contacted','Not available','Referred to another contact'],
       },
       finalOutcomes: [
+        { label: 'No Contact',
+          style: 'danger',  result: 'close_fail',    note: 'Closed — unable to reach member',
+          nextTitle: null },
         { label: 'Not Bidding',
           style: 'danger',  result: 'close_fail',    note: 'Closed — member not bidding',
-          nextTitle: null },
-        { label: 'Cannot Contact',
-          style: 'warning', result: 'close_fail',    note: 'Closed — unable to reach member',
           nextTitle: null },
         { label: 'Bid Placed',
           style: 'success', result: 'close_success', note: 'Closed — bid placed successfully',
           nextTitle: null },
         { label: 'Will Bid Later → Schedule Follow-up',
-          style: 'info',    result: 'next',          note: 'Member will bid later — follow-up created',
+          style: 'warning', result: 'next',          note: 'Member will bid later — follow-up created',
           nextTitle: 'Action 2-1 — Bid Follow-up Scheduler' },
         { label: 'Needs Training → Schedule Training',
-          style: 'info',    result: 'next',          note: 'Member needs training — training created',
+          style: 'warning', result: 'next',          note: 'Member needs training — training created',
           nextTitle: 'Action 3-1 — Training Scheduler' },
       ]
     },
@@ -2284,7 +2313,8 @@ function buildTaskWindowHTML(t, parentMission, winId) {
   return `
     <div class="tw-titlebar" id="${winId}_bar" >
       <div class="tw-title" title="${esc(t.Title||'—')}">${esc(t.Title||'—')}</div>
-      <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}" style="flex-shrink:0">${esc(t.TaskStatus||'—')}</span>
+      <span class="tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/[\s-]/g,'')}" style="flex-shrink:0">${esc(t.TaskStatus||'—')}</span>
+      ${(()=>{ const oc=getTaskOutcome(t); if(!oc) return ''; return `<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;${oc.type==='success'?'background:rgba(56,201,100,0.2);color:#38c964;border:1px solid rgba(56,201,100,0.3);':'background:rgba(232,69,60,0.15);color:#e8453c;border:1px solid rgba(232,69,60,0.3);'}">${esc(oc.label)}</span>`; })()}
       <button class="tw-btn" onclick="minimizeTaskWindow('${winId}')" title="Minimize" style="flex-shrink:0">—</button>
       <button class="tw-btn" onclick="closeTaskWindow('${winId}')" title="Close" style="flex-shrink:0">✕</button>
     </div>
@@ -2412,7 +2442,7 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
   const titleEl = document.getElementById(winId + '_bar');
   if(titleEl) {
     const pill = titleEl.querySelector('.tw-badge');
-    if(pill) { pill.className = `tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/\s/g,'')}`; pill.textContent = t.TaskStatus||'—'; }
+    if(pill) { pill.className = `tw-badge ts-pill ts-${(t.TaskStatus||'').toLowerCase().replace(/[\s-]/g,'')}`; pill.textContent = t.TaskStatus||'—'; }
   }
 
   // Build body content — same content as before but scoped to this window
@@ -2519,13 +2549,17 @@ function renderTaskCardIntoWindow(t, parentMission, winId) {
       // field_2 is the internal name for ActionStatus in this SP list
       const statusVal = a.field_2 || a.ActionStatus || 'Completed';
       const statusCls = statusVal.toLowerCase().replace(/\s/g,'');
+      // Determine if this is the last completed outcome action — highlight it
+      const isLastOutcome = a.id === sortedOutcomes[sortedOutcomes.length-1]?.id && statusVal === 'Completed';
+      const task_outcome = isLastOutcome ? getTaskOutcome(t) : null;
+      const rowHighlight = task_outcome ? (task_outcome.type==='success' ? 'background:rgba(56,201,100,0.08);border-left:3px solid #38c964;' : 'background:rgba(232,69,60,0.08);border-left:3px solid #e8453c;') : '';
       const noteRaw = a.field_6 || a.Notes || '';
       const parts = noteRaw.split('|').map(s=>s.trim()).filter(Boolean);
       const result = parts[0] || '';
       const noteText = parts.slice(1).join(' | ');
       const isAttempt = (a.Title||'').match(/^Attempt \d/);
-      return `<div style="border:1px solid var(--border);border-radius:6px;margin-bottom:5px;overflow:hidden">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;cursor:pointer;background:rgba(255,255,255,0.03)" onclick="event.stopPropagation();this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
+      return `<div style="border:1px solid var(--border);border-radius:6px;margin-bottom:5px;overflow:hidden;${rowHighlight}">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;cursor:pointer;background:${rowHighlight?'transparent':'rgba(255,255,255,0.03)'}" onclick="event.stopPropagation();this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;font-size:12px;color:var(--text)">${esc(a.Title||'—')}</span>
             ${result?`<span style="font-size:10px;color:var(--text-dim)">· ${esc(result)}</span>`:''}
@@ -2820,12 +2854,12 @@ async function recordFinalOutcomeWin(winId, taskId, result, label, note, nextTit
   } catch(e) { console.warn(e); }
 
   if(result==='close_fail') {
-    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', TaskOutcome:'Fail: '+label, Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
     showToast('Task closed — '+label, 'success');
     closeTaskWindow(winId);
 
   } else if(result==='close_success') {
-    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', TaskOutcome:'Pass: '+label, Notes:buildSafeNotes(t?.Notes, note+': '+finalNotes) }); }
     showToast('Task closed — success', 'success');
     closeTaskWindow(winId);
 
@@ -2880,8 +2914,9 @@ async function recordOutcomeWin(winId, taskId, result, label, note, nextTitle, i
   }
 
   if(result==='close_success'||result==='close_fail') {
-    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
-    showToast(result==='close_success'?'Task closed — success checked':'Task closed — '+label, 'success'); closeTaskWindow(winId);
+    const outcome = result==='close_success' ? 'Pass: '+label : 'Fail: '+label;
+    { const t=allTasks.find(x=>String(x.id)===String(taskId)); await updateListItem('Tasks', taskId, { TaskStatus:'Completed', TaskOutcome:outcome, Notes:buildSafeNotes(t?.Notes, note+': '+notes) }); }
+    showToast(result==='close_success'?'Task closed — ✓ '+label:'Task closed — '+label, 'success'); closeTaskWindow(winId);
   } else if(result==='next' || result==='next_skip') {
     const nt = nextTitle || null;
     if(nt) {
@@ -3193,14 +3228,48 @@ async function changeStatus(val) {
   try {
     await updateListItem('Missions', currentMission.id, { MissionStatus: val });
     currentMission.MissionStatus = val;
+
+    // Auto-close all open tasks when mission is Resolved or Closed
+    if(val === 'Resolved' || val === 'Closed') {
+      const missionTasks = allTasks.filter(t =>
+        String(t.ParentMissionLookupId) === String(currentMission.id) ||
+        String(t.ParentMission) === String(currentMission.id)
+      );
+      const openTasks = missionTasks.filter(t =>
+        t.TaskStatus !== 'Completed' &&
+        t.TaskStatus !== 'Closed - Complete' &&
+        t.TaskStatus !== 'Closed - Not Complete'
+      );
+      const completedTasks = missionTasks.filter(t => t.TaskStatus === 'Completed');
+
+      let closed = 0;
+      // Close open tasks as "Not Complete"
+      for(const t of openTasks) {
+        try {
+          await updateListItem('Tasks', t.id, { TaskStatus: 'Closed - Not Complete' });
+          closed++;
+        } catch(e) { console.warn('Task close failed:', e); }
+      }
+      // Re-stamp completed tasks as "Closed - Complete"
+      for(const t of completedTasks) {
+        try {
+          await updateListItem('Tasks', t.id, { TaskStatus: 'Closed - Complete' });
+          closed++;
+        } catch(e) { console.warn('Task close-complete failed:', e); }
+      }
+      if(closed > 0) showToast(`Mission ${val} — ${closed} task${closed!==1?'s':''} auto-closed`, 'success');
+    }
+
     // Show/hide delete bar
     const deleteBar = document.getElementById('mpDeleteBar');
     if(deleteBar) deleteBar.style.display = val === 'Closed' ? '' : 'none';
-    showToast(`Status updated to ${val}`, 'success');
+
     await loadData();
     // refresh badge in panel
     document.getElementById('mpBadges').querySelector('.spill').className = `spill ${statusClass(val)}`;
     document.getElementById('mpBadges').querySelector('.spill').textContent = val;
+    if(!((val==='Resolved'||val==='Closed') && allTasks.some(t=>t.ParentMissionLookupId==currentMission.id)))
+      showToast(`Status updated to ${val}`, 'success');
   } catch(e) { showToast(e.message, 'error'); }
 }
 
