@@ -491,7 +491,7 @@ body::after {
 
 .task-row {
   display: grid;
-  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 110px 100px 70px;
+  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 120px 110px 70px;
   gap: 12px;
   align-items: center;
   padding: 11px 18px;
@@ -502,7 +502,7 @@ body::after {
 }
 .task-row-header {
   display: grid;
-  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 110px 100px 70px;
+  grid-template-columns: 1.4fr 90px 150px 100px 60px 130px 120px 110px 70px;
   gap: 12px;
   padding: 7px 18px;
   font-size: 10px;
@@ -1165,7 +1165,7 @@ body::after {
     </div>
   </div>
   <div class="task-pool">
-    <div class="pool-hdr" style="display:grid;grid-template-columns:1fr 180px 120px 110px 130px 110px 80px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
+    <div class="pool-hdr" style="display:grid;grid-template-columns:1.4fr 90px 150px 100px 60px 130px 120px 110px 70px;gap:10px;padding:8px 16px;background:rgba(56,190,201,0.05);border-radius:0;border-bottom:1px solid var(--border)">
       <div class="th-col" onclick="sortTasks('Title')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Task <span id="sort-Title"></span></div>
       <div class="th-col" onclick="sortTasks('TTNumber')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">TT # <span id="sort-TTNumber"></span></div>
       <div class="th-col" onclick="sortTasks('ParentMission')" style="cursor:pointer;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;display:flex;align-items:center;gap:4px">Mission Type <span id="sort-ParentMission"></span></div>
@@ -1248,6 +1248,14 @@ body::after {
     </div>
 
     <div class="mp-body" id="mpBody"></div>
+    <!-- Delete button — only visible when mission is Closed -->
+    <div id="mpDeleteBar" style="display:none;padding:12px 20px;border-top:1px solid rgba(232,69,60,0.15);text-align:center">
+      <span onclick="event.stopPropagation();deleteMission()"
+        style="font-size:12px;font-weight:600;color:#e8453c;text-decoration:underline;cursor:pointer;letter-spacing:0.02em"
+        title="Permanently delete this mission and all related data">
+        delete
+      </span>
+    </div>
   </div>
 </div>
 
@@ -1389,6 +1397,14 @@ async function getListItems(listName) {
     url = d['@odata.nextLink'] || null;
   }
   return items;
+}
+
+async function deleteListItem(listName, itemId) {
+  const r = await fetch(`${GRAPH}/sites/${siteId}/lists/${encodeURIComponent(listName)}/items/${itemId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if(!r.ok && r.status !== 204) throw new Error(`Delete failed: ${r.status}`);
 }
 
 async function updateListItem(listName, itemId, fields) {
@@ -1698,6 +1714,9 @@ function openDetail(m) {
   if(typeSel) typeSel.value = m.MissionType || '';
   // Update mission title based on type + TT number
   updateMissionTitle(m);
+  // Show delete button only for closed missions
+  const deleteBar = document.getElementById('mpDeleteBar');
+  if(deleteBar) deleteBar.style.display = m.MissionStatus === 'Closed' ? '' : 'none';
 
   // hold button
   const holdBtn = document.getElementById('holdBtn');
@@ -2882,6 +2901,80 @@ function toggleAcc(id, event) {
 // ===============================
 // ACTIONS
 // ===============================
+async function deleteMission() {
+  if(!currentMission) return;
+  if(currentMission.MissionStatus !== 'Closed') {
+    showToast('Only closed missions can be deleted', 'error');
+    return;
+  }
+
+  const missionTitle = currentMission.MissionType
+    ? currentMission.MissionType + (currentMission.TTNumber ? ' ' + currentMission.TTNumber : '')
+    : (currentMission.Title || 'this mission');
+
+  // Confirm dialog
+  if(!confirm(`Permanently delete "${missionTitle}" and ALL related tasks and actions?\n\nThis cannot be undone.`)) return;
+
+  const mId = currentMission.id;
+  showToast('Deleting mission data...', 'success');
+
+  try {
+    // Step 1: Get all tasks for this mission
+    const tasks = allTasks.filter(t =>
+      String(t.ParentMissionLookupId) === String(mId) ||
+      String(t.ParentMission) === String(mId)
+    );
+
+    // Also fetch from SP in case allTasks is filtered
+    let allMissionTasks = [...tasks];
+    try {
+      const tResult = await getListItems('Tasks');
+      const spTasks = tResult.filter(t =>
+        String(t.fields?.ParentMissionLookupId) === String(mId) ||
+        String(t.ParentMissionLookupId) === String(mId)
+      );
+      // Merge unique IDs
+      spTasks.forEach(t => {
+        if(!allMissionTasks.find(x => String(x.id) === String(t.id))) {
+          allMissionTasks.push(t);
+        }
+      });
+    } catch(e) { console.warn('SP task fetch failed:', e); }
+
+    // Step 2: For each task, delete all its actions
+    let deletedActions = 0;
+    for(const task of allMissionTasks) {
+      const taskActions = allActions.filter(a =>
+        String(a.ParentTaskLookupId) === String(task.id) ||
+        String(a.ParentTask) === String(task.id)
+      );
+      for(const action of taskActions) {
+        try { await deleteListItem('Actions', action.id); deletedActions++; } catch(e) {}
+      }
+    }
+
+    // Step 3: Delete all tasks
+    let deletedTasks = 0;
+    for(const task of allMissionTasks) {
+      try { await deleteListItem('Tasks', task.id); deletedTasks++; } catch(e) {}
+    }
+
+    // Step 4: Delete the mission itself
+    await deleteListItem('Missions', mId);
+
+    showToast(`Deleted: mission + ${deletedTasks} task${deletedTasks!==1?'s':''} + ${deletedActions} action${deletedActions!==1?'s':''}`, 'success');
+
+    // Close panel and refresh
+    document.getElementById('modalOverlay').classList.add('hidden');
+    currentMission = null;
+    await loadData();
+
+  } catch(e) {
+    showToast('Delete failed: ' + e.message, 'error');
+    console.error(e);
+  }
+}
+
 function updateMissionTitle(m) {
   const title = m.MissionType ? m.MissionType + (m.TTNumber ? ' ' + m.TTNumber : '') : (m.Title || '—');
   document.getElementById('mpTitle').textContent = title;
@@ -2906,6 +2999,9 @@ async function changeStatus(val) {
   try {
     await updateListItem('Missions', currentMission.id, { MissionStatus: val });
     currentMission.MissionStatus = val;
+    // Show/hide delete bar
+    const deleteBar = document.getElementById('mpDeleteBar');
+    if(deleteBar) deleteBar.style.display = val === 'Closed' ? '' : 'none';
     showToast(`Status updated to ${val}`, 'success');
     await loadData();
     // refresh badge in panel
